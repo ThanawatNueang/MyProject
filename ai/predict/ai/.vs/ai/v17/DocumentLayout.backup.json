@@ -1,0 +1,85 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Project\\MyProject\\ai\\predict\\ai\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|d:\\project\\myproject\\ai\\predict\\ai\\predict\\controllers\\detectcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|solutionrelative:predict\\controllers\\detectcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|d:\\project\\myproject\\ai\\predict\\ai\\predict\\detect.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|solutionrelative:predict\\detect.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 1,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedHeight": 200,
+          "SelectedChildIndex": 9,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{004be353-6879-467c-9d1e-9ac23cdf6d49}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:3:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:7:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:4:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:7:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Detect.csproj",
+              "DocumentMoniker": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\Detect.csproj",
+              "RelativeDocumentMoniker": "predict\\Detect.csproj",
+              "ToolTip": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\Detect.csproj",
+              "RelativeToolTip": "predict\\Detect.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-07-17T13:25:38.69Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "DetectController.cs",
+              "DocumentMoniker": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\Controllers\\DetectController.cs",
+              "RelativeDocumentMoniker": "predict\\Controllers\\DetectController.cs",
+              "ToolTip": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\Controllers\\DetectController.cs",
+              "RelativeToolTip": "predict\\Controllers\\DetectController.cs",
+              "ViewState": "AgIAAGEAAAAAAAAAAAAkwEoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-17T13:08:09.936Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

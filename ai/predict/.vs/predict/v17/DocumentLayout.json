@@ -1,0 +1,86 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Project\\MyProject\\ai\\predict\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{DD001BAF-9DC1-4914-8229-8A63123F7B10}|predict\\predict.csproj|d:\\project\\myproject\\ai\\predict\\predict\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DD001BAF-9DC1-4914-8229-8A63123F7B10}|predict\\predict.csproj|solutionrelative:predict\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DD001BAF-9DC1-4914-8229-8A63123F7B10}|predict\\predict.csproj|d:\\project\\myproject\\ai\\predict\\predict\\controllers\\predictcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DD001BAF-9DC1-4914-8229-8A63123F7B10}|predict\\predict.csproj|solutionrelative:predict\\controllers\\predictcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 1,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedHeight": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Project\\MyProject\\ai\\predict\\predict\\Program.cs",
+              "RelativeDocumentMoniker": "predict\\Program.cs",
+              "ToolTip": "D:\\Project\\MyProject\\ai\\predict\\predict\\Program.cs",
+              "RelativeToolTip": "predict\\Program.cs",
+              "ViewState": "AgIAAHYAAAAAAAAAAAAYwJAAAAAWAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-17T11:48:31.547Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{004be353-6879-467c-9d1e-9ac23cdf6d49}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:3:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:7:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:4:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:7:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PredictController.cs",
+              "DocumentMoniker": "D:\\Project\\MyProject\\ai\\predict\\predict\\Controllers\\PredictController.cs",
+              "RelativeDocumentMoniker": "predict\\Controllers\\PredictController.cs",
+              "ToolTip": "D:\\Project\\MyProject\\ai\\predict\\predict\\Controllers\\PredictController.cs",
+              "RelativeToolTip": "predict\\Controllers\\PredictController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-17T11:37:54.786Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
