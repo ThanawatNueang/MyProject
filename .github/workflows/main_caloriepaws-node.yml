@@ -62,7 +62,8 @@ jobs:
         with:
           app-name: 'caloriepaws-node'
           slot-name: 'Production'
-          package: .
+          package: backend
 
           
+
 
