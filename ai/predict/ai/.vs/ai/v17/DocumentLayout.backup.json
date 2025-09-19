@@ -7,8 +7,8 @@
       "RelativeMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|solutionrelative:predict\\controllers\\detectcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|d:\\project\\myproject\\ai\\predict\\ai\\predict\\detect.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|solutionrelative:predict\\detect.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+      "AbsoluteMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|d:\\project\\myproject\\ai\\predict\\ai\\predict\\datafood\\rules.th.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{1D098309-B129-449C-B52D-9514B0CBA727}|predict\\Detect.csproj|solutionrelative:predict\\datafood\\rules.th.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -55,14 +55,14 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "Detect.csproj",
-              "DocumentMoniker": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\Detect.csproj",
-              "RelativeDocumentMoniker": "predict\\Detect.csproj",
-              "ToolTip": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\Detect.csproj",
-              "RelativeToolTip": "predict\\Detect.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-07-17T13:25:38.69Z"
+              "Title": "rules.th.json",
+              "DocumentMoniker": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\datafood\\rules.th.json",
+              "RelativeDocumentMoniker": "predict\\datafood\\rules.th.json",
+              "ToolTip": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\datafood\\rules.th.json",
+              "RelativeToolTip": "predict\\datafood\\rules.th.json",
+              "ViewState": "AgIAABgAAAAAAAAAAAAAACYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-09-08T10:49:01.367Z"
             },
             {
               "$type": "Document",
@@ -72,10 +72,9 @@
               "RelativeDocumentMoniker": "predict\\Controllers\\DetectController.cs",
               "ToolTip": "D:\\Project\\MyProject\\ai\\predict\\ai\\predict\\Controllers\\DetectController.cs",
               "RelativeToolTip": "predict\\Controllers\\DetectController.cs",
-              "ViewState": "AgIAAGEAAAAAAAAAAAAkwEoAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAIoCAAAAAAAAAAAuwJYCAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-17T13:08:09.936Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-17T13:08:09.936Z"
             }
           ]
         }

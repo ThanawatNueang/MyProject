@@ -14,6 +14,9 @@
           "content": {
             "multipart/form-data": {
               "schema": {
+                "required": [
+                  "Image"
+                ],
                 "type": "object",
                 "properties": {
                   "Image": {
