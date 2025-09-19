@@ -15,10 +15,10 @@ const server = app.listen(port, '0.0.0.0', () => {
   console.log(`App running on port ${port} in ${process.env.NODE_ENV} mode...`);
 });
 
-// เชื่อม DB แบบ async หลังจาก server start แล้ว
-connectDB()
-  .then(() => console.log('DB connected'))
-  .catch(err => console.error('DB connect failed:', err.message));
+// // เชื่อม DB แบบ async หลังจาก server start แล้ว
+// connectDB()
+//   .then(() => console.log('DB connected'))
+//   .catch(err => console.error('DB connect failed:', err.message));
 
 process.on('unhandledRejection', err => {
   console.error('UNHANDLED REJECTION! Shutting down...');
