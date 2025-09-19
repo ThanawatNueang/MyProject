@@ -3,10 +3,10 @@
 .DS_Store
 Thumbs.db
 # ไม่เอาไฟล์ .env
-.env
+backend/.env
 
 # โฟลเดอร์ node_modules (ถ้าเป็นโปรเจกต์ JS)
-node_modules/
+backend/node_modules/
 
 frontend/
 
