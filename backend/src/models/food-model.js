@@ -22,11 +22,6 @@ const Food = (sequelize) => {
       unique: true, // ชื่ออาหารต้องไม่ซ้ำกัน
       comment: 'ชื่ออาหาร (เช่น "ข้าวผัดกะเพราไก่", "อกไก่ย่าง")',
     },
-    serving_size: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-      comment: 'ขนาดการบริโภคต่อหนึ่งหน่วย (เช่น "1 จาน", "100 กรัม")',
-    },
     serving_suggestions: {
       type: DataTypes.TEXT,
       allowNull: true,

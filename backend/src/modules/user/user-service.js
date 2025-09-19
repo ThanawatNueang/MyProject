@@ -165,11 +165,10 @@ export const calculateUserNutritionGoals = async (userId) => {
 
   // 4. Set Daily Calorie Goal
   let dailyCalorieGoal;
-  const adjustment = 300; // Common adjustment for weight loss/gain
   if (bodyGoal === 'lose_weight') {
-    dailyCalorieGoal = tdee - adjustment;
+    dailyCalorieGoal = tdee - 0.85;
   } else if (bodyGoal === 'gain_weight') {
-    dailyCalorieGoal = tdee + adjustment;
+    dailyCalorieGoal = tdee + 1.15;
   } else { // maintain_weight
     dailyCalorieGoal = tdee;
   }

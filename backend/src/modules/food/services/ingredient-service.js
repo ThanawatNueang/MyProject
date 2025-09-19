@@ -1,7 +1,13 @@
 // services/ingredient.service.js
 import db from '../../../models/index.js'; // Import db object which contains all models
+import { baseSuggest } from '../../../utils/search-util.js';
 
 const Ingredient = db.Ingredient;
+const sequelize = db;
+
+export async function suggestIngredients(q, limit = 10) {
+  return baseSuggest(Ingredient, q, limit);
+}
 
 /**
  * Retrieves all ingredients from the database.

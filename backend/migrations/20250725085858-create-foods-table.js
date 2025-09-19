@@ -22,10 +22,6 @@ export default {
         allowNull: false,
         unique: true,
       },
-      serving_size: {
-        type: Sequelize.DataTypes.STRING(100),
-        allowNull: false,
-      },
       serving_suggestions: {
         type: Sequelize.DataTypes.TEXT,
         allowNull: true,

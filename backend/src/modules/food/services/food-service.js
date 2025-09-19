@@ -1,9 +1,16 @@
 // services/food.service.js
 import db from '../../../models/index.js'; // Import db object which contains all models
+import { baseSuggest } from '../../../utils/search-util.js';
+import { computeServingSize } from '../../../utils/serving.js'
 
 const Food = db.Food;
 const Ingredient = db.Ingredient;
-const FoodIngredient = db.Food_Ingredient;
+const FoodIngredient = db.FoodIngredient;
+const sequelize = db;
+
+export async function suggestFoods(q, limit = 10) {
+  return baseSuggest(Food, q, limit);
+}
 
 /**
  * Retrieves all food items from the database.
@@ -40,11 +47,13 @@ export const getAllFoods = async () => {
         totalCarbohydrates += ingredient.carbohydrates_per_unit * quantity;
       });
 
+      const servingSizeFromQty = computeServingSize(food.ingredients, { decimals: 2 });
+
       // Return food data including calculated nutrition
       return {
         id: food.id,
         name: food.name,
-        serving_size: food.serving_size,
+        serving_size: servingSizeFromQty,
         serving_suggestions: food.serving_suggestions,
         createdAt: food.createdAt,
         updatedAt: food.updatedAt,
@@ -88,16 +97,12 @@ export const getFoodById = async (foodId) => {
       include: [{
         model: Ingredient,
         as: 'ingredients',
-        through: {
-          attributes: ['quantity']
-        },
+        through: { attributes: ['quantity'] },
         attributes: { exclude: ['createdAt', 'updatedAt'] }
       }]
     });
 
-    if (!food) {
-      throw new Error('Food item not found.');
-    }
+    if (!food) throw new Error('Food item not found.');
 
     let totalCalories = 0;
     let totalFat = 0;
@@ -105,18 +110,20 @@ export const getFoodById = async (foodId) => {
     let totalCarbohydrates = 0;
 
     food.ingredients.forEach(ingredient => {
-      const quantity = ingredient.FoodIngredient.quantity;
-
-      totalCalories += ingredient.calories_per_unit * quantity;
-      totalFat += ingredient.fat_per_unit * quantity;
-      totalProtein += ingredient.protein_per_unit * quantity;
-      totalCarbohydrates += ingredient.carbohydrates_per_unit * quantity;
+      const quantity = Number(ingredient?.FoodIngredient?.quantity ?? 0);
+      totalCalories       += Number(ingredient.calories_per_unit || 0)       * quantity;
+      totalFat            += Number(ingredient.fat_per_unit || 0)            * quantity;
+      totalProtein        += Number(ingredient.protein_per_unit || 0)        * quantity;
+      totalCarbohydrates  += Number(ingredient.carbohydrates_per_unit || 0)  * quantity;
     });
+
+    // ใช้ยูทิล — ปัดทศนิยม 2 ตำแหน่ง (ปรับได้)
+    const servingSizeFromQty = computeServingSize(food.ingredients, { decimals: 2 });
 
     return {
       id: food.id,
       name: food.name,
-      serving_size: food.serving_size,
+      serving_size: servingSizeFromQty, // <<< คิดจาก ingredients
       serving_suggestions: food.serving_suggestions,
       createdAt: food.createdAt,
       updatedAt: food.updatedAt,
@@ -131,18 +138,119 @@ export const getFoodById = async (foodId) => {
         carbohydrates_per_unit: ing.carbohydrates_per_unit,
       })),
       calculated_nutrition: {
-        calories: parseFloat(totalCalories.toFixed(2)),
-        fat: parseFloat(totalFat.toFixed(2)),
-        protein: parseFloat(totalProtein.toFixed(2)),
-        carbohydrates: parseFloat(totalCarbohydrates.toFixed(2)),
+        calories:       Number(totalCalories.toFixed(2)),
+        fat:            Number(totalFat.toFixed(2)),
+        protein:        Number(totalProtein.toFixed(2)),
+        carbohydrates:  Number(totalCarbohydrates.toFixed(2)),
       }
     };
 
   } catch (error) {
     console.error(`Error in getFoodById service for foodId ${foodId}:`, error);
-    throw error; // Re-throw the error for the controller to handle
+    throw error;
   }
 };
+
+// services/foodService.js
+export const getFoodByName = async (foodName, components = {}) => {
+  try {
+    const food = await Food.findOne({
+      where: { name: foodName },
+      include: [{
+        model: Ingredient,
+        as: 'ingredients',
+        through: { attributes: ['quantity'] },
+        attributes: { exclude: ['createdAt', 'updatedAt'] }
+      }]
+    });
+    
+
+    if (!food) return null;
+
+    const norm = (s) => String(s ?? '').trim().toLowerCase();
+
+    // เตรียม compMap
+    let compMap = {};
+    if (Array.isArray(components)) {
+      for (const obj of components) {
+        for (const [k, v] of Object.entries(obj || {})) {
+          const key = String(k);
+          const val = Number(v) || 0;
+          compMap[key] = (compMap[key] || 0) + val;
+        }
+      }
+    } else if (components && typeof components === 'object') {
+      compMap = { ...components };
+    }
+
+    const normalizedCompMap = {};
+    for (const [k, v] of Object.entries(compMap)) {
+      const nk = norm(k);
+      const nv = Number(v) || 0;
+      if (nk && nv > 0) normalizedCompMap[nk] = (normalizedCompMap[nk] || 0) + nv;
+    }
+
+    let totalCalories = 0;
+    let totalFat = 0;
+    let totalProtein = 0;
+    let totalCarbohydrates = 0;
+
+    const updatedIngredients = food.ingredients.map(ing => {
+      const baseQty = Number(ing?.FoodIngredient?.quantity ?? 0);
+      const compCount = normalizedCompMap[norm(ing.name)] || 0;
+      const factor = compCount > 0 ? compCount : 1;
+      const qty = baseQty * factor;
+
+      totalCalories       += qty * Number(ing.calories_per_unit || 0);
+      totalFat            += qty * Number(ing.fat_per_unit || 0);
+      totalProtein        += qty * Number(ing.protein_per_unit || 0);
+      totalCarbohydrates  += qty * Number(ing.carbohydrates_per_unit || 0);
+
+      return {
+        id: ing.id,
+        name: ing.name,
+        unit: ing.unit,
+        quantity: qty,
+        calories_per_unit: ing.calories_per_unit,
+        fat_per_unit: ing.fat_per_unit,
+        protein_per_unit: ing.protein_per_unit,
+        carbohydrates_per_unit: ing.carbohydrates_per_unit,
+      };
+    });
+
+    // ใช้ยูทิล — ปัด 2 ตำแหน่ง
+    const servingSizeFromQuantity = computeServingSize(updatedIngredients, { decimals: 2 });
+
+    const applied_components = {};
+    for (const ing of updatedIngredients) {
+      const nk = norm(ing.name);
+      const count = normalizedCompMap[nk];
+      if (count > 0) applied_components[ing.name] = count;
+    }
+
+    return {
+      id: food.id,
+      name: food.name,
+      serving_size: servingSizeFromQuantity,
+      serving_suggestions: food.serving_suggestions,
+      createdAt: food.createdAt,
+      updatedAt: food.updatedAt,
+      applied_components,
+      ingredients: updatedIngredients,
+      calculated_nutrition: {
+        calories:       Number(totalCalories.toFixed(2)),
+        fat:            Number(totalFat.toFixed(2)),
+        protein:        Number(totalProtein.toFixed(2)),
+        carbohydrates:  Number(totalCarbohydrates.toFixed(2)),
+      }
+    };
+
+  } catch (error) {
+    console.error(`Error in getFoodByName service for food name '${foodName}':`, error);
+    throw error;
+  }
+};
+
 
 /**
  * Creates a new food item and associates it with ingredients.

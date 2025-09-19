@@ -9,9 +9,9 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 
-
 import AppError from './utils/appError.js';
 import globalErrorHandler from './middlewares/errorHandler.js';
+
 import userRoutes from './modules/user/user-route.js';
 import authRoute from './modules/auth/auth-route.js'
 import foodRoute from './modules/food/routes/food-route.js'
@@ -22,13 +22,13 @@ import eatinghistoryroute from './modules/eating-history/eating-history-routes.j
 const app = express();
 
 const allowedOrigins = [
-  'http://localhost:5173',          // **ต้องมี Origin นี้!**
-  'http://100.88.251.63:5173',    // หากคุณเข้าถึง React App ผ่าน Tailscale IP (ถ้ามี)
+  'http://localhost:5173',
+  'http://100.88.251.63:5173',
   'http://localhost:5174',
-  // เพิ่ม Origin อื่นๆ ที่จำเป็น
+  'http://localhost:5175',
 ];
 
-app.use(cors({ // ใช้ app.use() เพื่อให้ครอบคลุมทุก method (GET, POST, OPTIONS, etc.)
+app.use(cors({
   origin: function(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -37,14 +37,11 @@ app.use(cors({ // ใช้ app.use() เพื่อให้ครอบคล
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // **สำคัญมาก: ต้องเป็น true** เพราะ Frontend ใช้ `credentials: "include"`
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // ระบุ HTTP Methods ที่อนุญาต
-  allowedHeaders: ['Content-Type', 'Authorization'], // ระบุ Headers ที่อนุญาต
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-// app.use(cors({  
-//     origin: 'http://localhost:5137',
-//     credentials: true
-//     }));
+
 if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev')); 
 }
@@ -66,7 +63,6 @@ app.use(xss());
 
 app.use(hpp({
     whitelist: [
-        // เพิ่มพารามิเตอร์ที่สามารถซ้ำกันได้ที่นี่ถ้ามี
     ]
 }));
 
@@ -77,7 +73,6 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')
 //     req.requestTime = new Date().toISOString();
 //     next();
 // });
-
 
 app.get('/', (req, res) => {
     res.status(200).json({ message: 'Welcome to the API! Server is running and all basic middlewares are active.' });

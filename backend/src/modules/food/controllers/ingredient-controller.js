@@ -89,3 +89,20 @@ export const deleteIngredient = async (req, res) => {
     res.status(404).json({ message: error.message || 'Failed to delete ingredient.' });
   }
 };
+
+
+
+// ingredients.controller.js (และ foods.controller.js)
+export const getIngredientSuggest = async (req, res) => {
+  try {
+    const raw = req.query.q;
+    const q = Array.isArray(raw) ? raw[0] : (raw ?? '');
+    const limit = Math.min(parseInt(req.query.limit || '10', 10), 20);
+
+    const data = await ingredientService.suggestIngredients(q, limit);
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error('[getIngredientSuggest] error:', err);
+    return res.status(500).json({ message: 'Failed to get ingredient suggestions.' });
+  }
+};

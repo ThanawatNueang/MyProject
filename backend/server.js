@@ -6,7 +6,7 @@ import { connectDB } from './src/config/db.js';
 dotenv.config();
 
 process.on('uncaughtException', err => {
-    console.error('UNCAUGHT EXCEPTION! 💥 Shutting down...');
+    console.error('UNCAUGHT EXCEPTION! Shutting down...');
     console.error(err.name, err.message, err.stack);
     process.exit(1);
 });
@@ -20,7 +20,7 @@ const startServer = async () => {
         });
 
         process.on('unhandledRejection', err => {
-            console.error('UNHANDLED REJECTION! 💥 Shutting down...');
+            console.error('UNHANDLED REJECTION! Shutting down...');
             console.error(err.name, err.message, err.stack);
             server.close(() => {
                 process.exit(1);

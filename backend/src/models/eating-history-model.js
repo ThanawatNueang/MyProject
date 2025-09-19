@@ -85,8 +85,20 @@ const EatingHistory = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: false,
     },
+    custom_food_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    defaultValue: null,
+    comment: 'ชื่อเมนูที่ผู้ใช้แก้ไขเอง ถ้ามี',
+  },
+  //   serving_size: {
+  //   type: DataTypes.DECIMAL(10,0),
+  //   allowNull: true,
+  //   defaultValue: null,
+  // },
+
   }, {
-    tableName: 'eating_histories', // กำหนดชื่อตารางในฐานข้อมูล
+    tableName: 'eating_history', // กำหนดชื่อตารางในฐานข้อมูล
     timestamps: true,
     comment: 'ตารางสำหรับจัดเก็บประวัติการกินของผู้ใช้',
   });
