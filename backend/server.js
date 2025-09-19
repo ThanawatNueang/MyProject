@@ -1,29 +1,14 @@
-import app from './src/app.js';
-import dotenv from 'dotenv';
-import { connectDB } from './src/config/db.js';
+import express from 'express';
 
-dotenv.config();
+const app = express();
 
-process.on('uncaughtException', err => {
-  console.error('UNCAUGHT EXCEPTION! Shutting down...');
-  console.error(err.name, err.message, err.stack);
-  process.exit(1);
+// route ง่าย ๆ
+app.get('/', (req, res) => {
+  res.send('Hello from Azure App Service ✅');
 });
 
+// ใช้พอร์ตที่ Azure กำหนด (PORT env) หรือ 3000 ถ้าทดสอบ local
 const port = process.env.PORT || 3000;
-const server = app.listen(port, '0.0.0.0', () => {
-  console.log(`App running on port ${port} in ${process.env.NODE_ENV} mode...`);
-});
-
-// // เชื่อม DB แบบ async หลังจาก server start แล้ว
-// connectDB()
-//   .then(() => console.log('DB connected'))
-//   .catch(err => console.error('DB connect failed:', err.message));
-
-process.on('unhandledRejection', err => {
-  console.error('UNHANDLED REJECTION! Shutting down...');
-  console.error(err.name, err.message, err.stack);
-  server.close(() => {
-    process.exit(1);
-  });
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on port ${port}`);
 });
