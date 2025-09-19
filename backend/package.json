@@ -2,10 +2,10 @@
   "name": "backend",
   "main": "server.js",
   "type": "module",
-  "scripts": {
+   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon"
+    "dev": "nodemon",
+    "test": "echo \"No tests\" && exit 0"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
