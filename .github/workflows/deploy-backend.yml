@@ -1,45 +1,62 @@
-﻿name: Deploy backend to Azure Web App (caloriepaws)
+﻿name: deploy-caloriepaws
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/deploy-backend.yml'
-  workflow_dispatch:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  id-token: write  # ต้องมีสำหรับ OIDC
+
+env:
+  AZURE_WEBAPP_NAME: caloriepaws
+  AZURE_RESOURCE_GROUP: server
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Use Node 22.x
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Install dependencies
-        working-directory: backend
+      - name: Install
+        working-directory: ./backend
         run: npm ci
 
-      - name: Build (optional)
-        working-directory: backend
-        run: npm run build --if-present
+      # ถ้าไม่มีขั้นตอน build ให้ลบ step นี้ได้
+      - name: Build
+        working-directory: ./backend
+        run: |
+          if [ -f package.json ] && cat package.json | jq -e '.scripts.build' >/dev/null 2>&1; then
+            npm run build
+          else
+            echo "no build script; skipping"
+          fi
 
-      - name: Azure Login (OIDC)
+      - name: Azure Login (OIDC, via the UAMI that Deployment Center created)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy to Azure Web App
+      - name: Enable build on deploy (Oryx)
+        run: |
+          az webapp config appsettings set \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --name $AZURE_WEBAPP_NAME \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
+
+      - name: Deploy to Azure Web App (zip the backend folder)
         uses: azure/webapps-deploy@v3
         with:
-          app-name: caloriepaws
-          package: backend
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: ./backend
