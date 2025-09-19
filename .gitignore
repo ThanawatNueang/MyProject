@@ -1,11 +1,16 @@
+*.log
+.vscode/
+.DS_Store
+Thumbs.db
 # ไม่เอาไฟล์ .env
 .env
 
 # โฟลเดอร์ node_modules (ถ้าเป็นโปรเจกต์ JS)
 node_modules/
 
-# ไฟล์ log
-*.log
+frontend/
+
+ai/
 
 # ไฟล์ระบบจาก editor
 .vscode/
