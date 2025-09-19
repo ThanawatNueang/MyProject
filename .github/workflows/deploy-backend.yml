@@ -1,4 +1,4 @@
-name: Deploy backend to Azure Web App (caloriepaws)
+﻿name: Deploy backend to Azure Web App (caloriepaws)
 
 on:
   push:
@@ -12,17 +12,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'   # หรือ 18 LTS ก็ได้
+          node-version: '20'
 
-      - name: Install deps
+      - name: Install dependencies
         working-directory: backend
         run: npm ci
 
@@ -30,9 +31,15 @@ jobs:
         working-directory: backend
         run: npm run build --if-present
 
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: caloriepaws
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISH_PROFILE_NODE }}
           package: backend
