@@ -67,3 +67,5 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           slot-name: Production
           package: app
+
+# ci: trigger 2025-09-19T23:56:51.0199982+07:00
