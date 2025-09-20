@@ -3,13 +3,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import app from './src/app.js';
-import { connectDB, pingDB } from './src/config/db.js';
+// import { connectDB, pingDB } from './src/config/db.js';
 
-process.on('uncaughtException', (err) => {
-  console.error('UNCAUGHT EXCEPTION! Shutting down...');
-  console.error(err);
-  process.exit(1);
-});
+// process.on('uncaughtException', (err) => {
+//   console.error('UNCAUGHT EXCEPTION! Shutting down...');
+//   console.error(err);
+//   process.exit(1);
+// });
 
 // 1) start server ก่อน เพื่อให้ Azure probe ผ่าน
 const port = process.env.PORT || 3000;
@@ -19,14 +19,14 @@ const server = app.listen(port, '0.0.0.0', () => {
 
 // 2) health endpoints
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
-app.get('/db-health', async (_req, res) => {
-  try {
-    await pingDB();
-    res.status(200).send('db:ok');
-  } catch (e) {
-    res.status(503).send('db:down');
-  }
-});
+// app.get('/db-health', async (_req, res) => {
+//   try {
+//     await pingDB();
+//     res.status(200).send('db:ok');
+//   } catch (e) {
+//     res.status(503).send('db:down');
+//   }
+// });
 
 // 3) connect DB แบบ async + retry
 const bootstrapDB = async () => {
@@ -47,7 +47,7 @@ const bootstrapDB = async () => {
   }
   console.error('🛑 DB still unreachable after retries. App stays up, routes that need DB may fail with 503.');
 };
-bootstrapDB();
+// bootstrapDB();
 
 process.on('unhandledRejection', (err) => {
   console.error('UNHANDLED REJECTION!', err);
