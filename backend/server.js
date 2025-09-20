@@ -1,48 +1,77 @@
 // server.js
 import express from "express";
-import dotenv from "dotenv";
-import mysql from "mysql2";
-
-dotenv.config();
+import mysql from "mysql2/promise";
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// ⭐ สร้าง connection
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
-  port: process.env.DB_PORT || 3306,
-  ssl: { rejectUnauthorized: true }
+// ====== ENV ======
+const {
+  DB_HOST,
+  DB_PORT = 3306,
+  DB_USERNAME,
+  DB_PASSWORD,
+  DB_DATABASE,
+} = process.env;
+
+// ====== MySQL Pool ======
+const pool = mysql.createPool({
+  host: DB_HOST,                           // ae7fb7a25f-dbserver.mysql.database.azure.com
+  port: Number(DB_PORT),
+  user: DB_USERNAME,                       // ต้องเป็น username@servername
+  password: DB_PASSWORD,
+  database: DB_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 5,
+  queueLimit: 0,
+  // Azure MySQL Flexible Server บังคับ TLS
+  ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true },
+  connectTimeout: 15000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
 });
 
+// ตรวจ DB ตอนสตาร์ท และมี health route ให้เช็ค
+async function checkDb() {
+  try {
+    const [rows] = await pool.query("SELECT 1 AS ok");
+    console.log("DB OK:", rows);
+    return true;
+  } catch (err) {
+    // log รายละเอียดแบบปลอดภัย
+    console.error("DB CONNECT FAILED", {
+      name: err.name,
+      code: err.code,          // เช่น ER_ACCESS_DENIED_ERROR, ETIMEDOUT, ENOTFOUND
+      errno: err.errno,
+      sqlState: err.sqlState,
+      message: err.message,
+      fatal: err.fatal,
+    });
+    return false;
+  }
+}
 
-connection.connect((err) => {
-  if (err) {
-    console.error("❌ Database connection failed:", err.message);
-  } else {
-    console.log("✅ Database connected!");
+app.get("/health/db", async (_req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT NOW() AS now");
+    res.json({ ok: true, now: rows[0].now });
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      error: {
+        code: err.code,
+        errno: err.errno,
+        sqlState: err.sqlState,
+        message: err.message,
+      },
+      hint: "ดู code/message ข้างบนเพื่อไล่สาเหตุด้านล่าง",
+    });
   }
 });
 
+app.get("/", (_req, res) => res.send("Server running"));
 
-app.get("/", (req, res) => {
-  res.send("Hello from Azure ✅");
-});
-
-
-app.get("/test-db", (req, res) => {
-  connection.query("SELECT NOW() AS now", (err, results) => {
-    if (err) {
-      console.error("❌ Query error:", err.message);
-      return res.status(500).json({ error: "DB error" });
-    }
-    res.json(results);
-  });
-});
-
-const port = process.env.PORT || 3000;
-app.listen(port, "0.0.0.0", () => {
-  console.log(`🚀 Server running on port ${port}`);
+app.listen(PORT, async () => {
+  console.log(`Server listening on :${PORT}`);
+  await checkDb();
 });
