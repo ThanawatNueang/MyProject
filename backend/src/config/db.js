@@ -37,3 +37,8 @@ export async function connectDB() {
         throw error; // Re-throw the error to be handled by the caller (e.g., app.js)
     }
 }
+
+
+export async function pingDB() {
+  await sequelize.query('SELECT 1');
+}
