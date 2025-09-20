@@ -1,0 +1,19 @@
+/* calendar-custom.css */
+.full-calendar {
+  width: 100% !important;
+  display: block !important;
+}
+
+.full-calendar .rdp-months {
+  display: flex;
+  justify-content: center;
+  width: 100% !important;
+}
+
+.full-calendar .rdp-month {
+  width: 100% !important;
+}
+
+.full-calendar .rdp-table {
+  width: 100% !important;
+}
