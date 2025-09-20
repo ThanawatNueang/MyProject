@@ -15,7 +15,9 @@ export const sequelize = new Sequelize(
         logging: false,
         dialectOptions: {
             charset: 'utf8mb4',
-            // collate: 'utf8mb4_0900_ai_ci',
+            ssl: process.env.MYSQL_SSL === 'true'
+            ? { require: true, rejectUnauthorized: true }
+            : undefined,
         },
         pool: {
             max: 5,
