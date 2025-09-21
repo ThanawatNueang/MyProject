@@ -8,7 +8,7 @@ import { logoutUser } from "../API/auth.js";
 import { FaRegEdit } from "react-icons/fa";
 import { IoChevronBack } from "react-icons/io5";
 
-const backendURL = "http://100.100.45.89:3201";
+const backendURL = "https://caloriepaws-node.azurewebsites.net"
 
 // ===== Storage Keys =====
 const K = {

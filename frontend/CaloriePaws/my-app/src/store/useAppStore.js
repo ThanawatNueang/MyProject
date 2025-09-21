@@ -25,7 +25,7 @@ export const useAppStore = create((set, get) => ({
     const { loaded } = get();
     if (loaded.user) return;
     const res = await userPreview();
-    const backendURL = "http://100.100.45.89:3201";
+    const backendURL = "https://caloriepaws-node.azurewebsites.net"
     set({
       user: res?.user || null,
       profileImage: res?.user?.profilePicture

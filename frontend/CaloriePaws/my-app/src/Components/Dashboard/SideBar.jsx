@@ -9,7 +9,7 @@ import { userPreview } from "../API/user";
 import { logoutUser } from "../API/auth";
 import fallbackUser from "../../assets/images/user.jpg";
 
-const backendURL = "http://100.100.45.89:3201";
+const backendURL = "https://caloriepaws-node.azurewebsites.net"
 
 const K = {
   token: "userToken",

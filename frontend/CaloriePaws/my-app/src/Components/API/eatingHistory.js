@@ -1,10 +1,14 @@
-const BASE_URL =
+// src/API/eatingHistory.js  (หรือชื่อไฟล์เดิมของคุณ)
+
+export const BASE_URL =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     import.meta.env.VITE_API_BASE_URL) ||
-  "http://100.100.45.89:3201";
+  "https://caloriepaws-node.azurewebsites.net"; // ✅ ค่า default โปรดักชัน (ไม่ใช้พอร์ต)
 
-export const TOKEN_KEY = "userToken"; // ใช้คีย์เดียวกันทั้งแอป
+export const TOKEN_KEY = "userToken";
+
+// -------------------- Helpers --------------------
 
 function getAuthHeader() {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -12,11 +16,13 @@ function getAuthHeader() {
 }
 
 function handleUnauthorized() {
-  // ลบ token ทิ้งเพื่อบังคับให้ login ใหม่ใน flow ของคุณ
-  localStorage.removeItem(TOKEN_KEY);
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {}
 }
 
 async function handleJsonResponse(res, context = "request") {
+  // 401: ล้าง token และโยน error
   if (res.status === 401) {
     const txt = await res.text().catch(() => "");
     console.error(`❌ ${context} 401:`, txt);
@@ -24,7 +30,7 @@ async function handleJsonResponse(res, context = "request") {
     throw new Error(`Unauthorized (401): ${txt || "Invalid token"}`);
   }
 
-  // บาง backend จะส่ง 204 No Content หลังลบ/แก้ไข
+  // บางตัวตอบ 204 No Content
   if (res.status === 204) return null;
 
   const text = await res.text().catch(() => "");
@@ -33,46 +39,40 @@ async function handleJsonResponse(res, context = "request") {
     throw new Error(`${context} failed: ${res.status} ${text}`);
   }
 
-  // พยายาม parse JSON ถ้าไม่ใช่ JSON จะคืน raw text กลับ
+  // คืน JSON ถ้า parse ได้ ไม่งั้นคืน text
   try {
     const json = text ? JSON.parse(text) : null;
-    // รองรับทั้ง { data: ... } หรือส่ง array/object ตรง ๆ
     return json && Object.prototype.hasOwnProperty.call(json, "data")
       ? json.data
       : json;
   } catch {
-    // ไม่ใช่ JSON ก็คืน text
     return text;
   }
 }
 
+function toNumber(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 // -------------------- Normalizers --------------------
 
-/**
- * ทำให้ payload ที่ส่งขึ้นหลังบ้านมีทั้งแบบ flatten และแบบ nutrition object
- * และ map carbohydrates -> carbs ให้ด้วย เพื่อให้ฝั่ง client ใช้สะดวก
- */
+/** แปลง payload ให้หลังบ้านรองรับทั้งแบบ flatten และ object nutrition */
 function normalizeCreatePayload(input = {}) {
   const n = input.nutrition || {};
-  const calories =
-    toNumber(input.calories) ?? toNumber(n.calories) ?? 0;
-  const protein =
-    toNumber(input.protein) ?? toNumber(n.protein) ?? 0;
-  // carbs อาจมาจาก n.carbohydrates หรือ n.carbs
-  const carbs =
+  const calories = toNumber(input.calories) ?? toNumber(n.calories) ?? 0;
+  const protein  = toNumber(input.protein)  ?? toNumber(n.protein)  ?? 0;
+  const carbs    =
     toNumber(input.carbs) ??
     toNumber(n.carbohydrates) ??
     toNumber(n.carbs) ??
     0;
-  const fat =
-    toNumber(input.fat) ?? toNumber(n.fat) ?? 0;
+  const fat      = toNumber(input.fat)      ?? toNumber(n.fat)      ?? 0;
 
-  const nutrition = {
-    calories,
-    protein,
-    carbohydrates: carbs, // เก็บเป็น carbohydrates ใน object
-    fat,
-  };
+  const nutrition = { calories, protein, carbohydrates: carbs, fat };
+
+  const consumed =
+    input.consumedAt ?? input.consumed_at ?? new Date().toISOString();
 
   return {
     foodId: input.foodId,
@@ -91,32 +91,33 @@ function normalizeCreatePayload(input = {}) {
         }))
       : [],
     notes: input.notes || "",
-    consumedAt:  input.consumedAt ?? input.consumed_at ?? new Date().toISOString(),
-    consumed_at: input.consumedAt ?? input.consumed_at ?? new Date().toISOString(),
+    consumedAt: consumed,
+    consumed_at: consumed,
   };
 }
 
-/**
- * ทำให้รายการที่ดึงจาก backend กลายเป็น shape เดียวกันในฝั่ง client
- */
+/** แปลงรายการจากหลังบ้านให้เป็น shape เดียวกันใน client */
 export function normalizeHistoryItem(m, idx = 0) {
-  const consumed =
-    m.consumedAt ??
-    m.consumed_at ??
-    m.date ??
-    null;
-    
+  const consumed = m.consumedAt ?? m.consumed_at ?? m.date ?? null;
   return {
     id: m.id ?? m.foodId ?? String(idx),
     name: m.custom_food_name || m.food_name || "Unknown food",
-    calories: toNumber(m.calculated_calories) ?? toNumber(m?.nutrition?.calculated_calories) ?? 0,
-    protein: toNumber(m.calculated_protein) ?? toNumber(m?.nutrition?.calculated_protein) ?? 0,
+    calories:
+      toNumber(m.calculated_calories) ??
+      toNumber(m?.nutrition?.calculated_calories) ??
+      0,
+    protein:
+      toNumber(m.calculated_protein) ??
+      toNumber(m?.nutrition?.calculated_protein) ??
+      0,
     carbs:
       toNumber(m.calculated_carbohydrates) ??
       toNumber(m?.nutrition?.calculated_carbohydrates) ??
-      toNumber(m?.nutrition?.calculated_carbohydrates) ??
       0,
-    fat: toNumber(m.calculated_fat) ?? toNumber(m?.nutrition?.calculated_fat) ?? 0,
+    fat:
+      toNumber(m.calculated_fat) ??
+      toNumber(m?.nutrition?.calculated_fat) ??
+      0,
     notes: m.notes ?? "",
     consumedAt: consumed,
     consumed_at: consumed,
@@ -126,87 +127,64 @@ export function normalizeHistoryItem(m, idx = 0) {
   };
 }
 
-function toNumber(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
 // -------------------- Date helpers --------------------
 
 export function getLast7DaysRange() {
-  const end = new Date();       // วันนี้
+  const end = new Date();
   const tomorrow = new Date(end);
-  tomorrow.setDate(end.getDate() + 1); // ทำ endDate แบบ exclusive ให้ครอบวันนี้
+  tomorrow.setDate(end.getDate() + 1); // exclusive
   const start = new Date();
   start.setDate(end.getDate() - 6);
 
-  const toISODate = (d) => d.toISOString().slice(0, 10);
-  return { startDate: toISODate(start), endDate: toISODate(tomorrow) };
+  const iso = (d) => d.toISOString().slice(0, 10);
+  return { startDate: iso(start), endDate: iso(tomorrow) };
 }
 
 // -------------------- API Calls --------------------
 
-/**
- * GET /api/eatinghistory?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
- * สามารถส่งช่วงวันหรือไม่ส่งก็ได้ (ถ้าไม่ส่ง backend ควรคืนทั้งหมด หรือมีค่า default)
- */
-export const eatingHistory = async (startDate, endDate) => {
+/** GET /api/eatinghistory?startDate=&endDate= */
+export async function eatingHistory(startDate, endDate) {
   const params = new URLSearchParams();
   if (startDate) params.set("startDate", startDate);
   if (endDate) params.set("endDate", endDate);
 
   const url =
-    params.toString().length > 0
+    params.toString()
       ? `${BASE_URL}/api/eatinghistory?${params.toString()}`
       : `${BASE_URL}/api/eatinghistory`;
 
-  console.log("[GET] /api/eatinghistory ->", { url });
-
   const res = await fetch(url, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeader(),
-    },
+    headers: { ...getAuthHeader() }, // GET ไม่จำเป็นต้องใส่ Content-Type
+    cache: "no-store",
   });
 
-  const data = await res.json()
-  console.log(data.data);
-  return data.data;
-};
+  // คาดหวังหลังบ้านกลับ { data: [...] }
+  const data = await handleJsonResponse(res, "GET /api/eatinghistory");
+  return Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+}
 
-/**
- * ตัวช่วยดึง 7 วันย้อนหลัง (ใช้ใน Aside ได้เลย)
- */
+/** Helper: ดึง 7 วันย้อนหลัง */
 export async function fetchLast7Days() {
   const { startDate, endDate } = getLast7DaysRange();
   let data = await eatingHistory(startDate, endDate);
   if (!Array.isArray(data) || data.length === 0) {
-    // fallback: บางหลังบ้านต้องการ ?days=7 หรือไม่ส่งพาราม
     try {
-      data = await eatingHistory(); // ไม่ส่งช่วง
+      data = await eatingHistory(); // fallback
     } catch {}
   }
-  const arr = Array.isArray(data) ? data : [];
-  const normalized = arr.map((m, i) => normalizeHistoryItem(m, i));
-  console.log(normalized,"noooo");
+  const normalized = (Array.isArray(data) ? data : []).map((m, i) =>
+    normalizeHistoryItem(m, i)
+  );
   const getT = (x) =>
     Date.parse(x?.consumedAt ?? x?.consumed_at ?? x?.date ?? "") || -Infinity;
   normalized.sort((a, b) => getT(b) - getT(a));
   return normalized;
 }
 
-/**
- * POST /api/eatinghistory
- */
+/** POST /api/eatinghistory */
 export async function createEatingHistory(payload) {
   const body = normalizeCreatePayload(payload);
-  console.log("📤 POST payload -> /api/eatinghistory:", body);
-
-  if (!body?.foodId) {
-    console.warn("⚠️ payload.foodId ว่าง อาจทำให้หลังบ้าน reject");
-  }
-
   const res = await fetch(`${BASE_URL}/api/eatinghistory`, {
     method: "POST",
     headers: {
@@ -215,43 +193,31 @@ export async function createEatingHistory(payload) {
     },
     body: JSON.stringify(body),
   });
-
-  const data = await handleJsonResponse(res, "POST /api/eatinghistory");
-  console.log("✅ POST response:", data);
-  return data;
+  return await handleJsonResponse(res, "POST /api/eatinghistory");
 }
 
+/** PATCH /api/eatinghistory */
 export async function updateEatingHistory(patch) {
-console.log(patch);
-
-const res = await fetch(`${BASE_URL}/api/eatinghistory`, {
+  const res = await fetch(`${BASE_URL}/api/eatinghistory`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeader()
+      ...getAuthHeader(),
     },
     body: JSON.stringify(patch),
   });
-
-   const data = await res.json()
-  console.log("✅ PATCH response:", data);
-  return data; 
+  return await handleJsonResponse(res, "PATCH /api/eatinghistory");
 }
 
-/**
- * DELETE /api/eatinghistory/:id
- */
+/** DELETE /api/eatinghistory/:id */
 export async function deleteEatingHistory(id) {
   if (!id) throw new Error("deleteEatingHistory: missing id");
-
-  const res = await fetch(`${BASE_URL}/api/eatinghistory/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    headers: {
-      ...getAuthHeader(),
-    },
-  });
-
-  const data = await handleJsonResponse(res, "DELETE /api/eatinghistory/:id");
-  console.log("✅ DELETE response:", data);
-  return data; // อาจเป็น null (204)
+  const res = await fetch(
+    `${BASE_URL}/api/eatinghistory/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      headers: { ...getAuthHeader() },
+    }
+  );
+  return await handleJsonResponse(res, "DELETE /api/eatinghistory/:id"); // อาจเป็น null (204)
 }

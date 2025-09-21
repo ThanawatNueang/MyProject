@@ -4,7 +4,7 @@ import { FaPlus } from "react-icons/fa6";
 import { useState, useEffect } from "react";
 import { userUpdateMe } from "../API/user";
 
-const API_BASE = "http://100.100.45.89:3201";
+const API_BASE = "https://caloriepaws-node.azurewebsites.net"
 
 export const ProfileSetting = () => {
   const navigate = useNavigate();

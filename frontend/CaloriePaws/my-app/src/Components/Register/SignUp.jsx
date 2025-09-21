@@ -8,7 +8,7 @@ import { MdEmail } from "react-icons/md";
 import { useState } from "react";
 import { registerUser, loginUser } from "../API/auth";
 
-const backendURL = "http://100.100.45.89:3201";
+const backendURL = "https://caloriepaws-node.azurewebsites.net"
 
 export const SignUp = () => {
   const [password, setPassword] = useState("");

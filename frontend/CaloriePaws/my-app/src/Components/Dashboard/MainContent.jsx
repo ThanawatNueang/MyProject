@@ -19,7 +19,7 @@ import { RiFolderUploadFill, RiDashboardFill } from "react-icons/ri";
 import { MdFoodBank, MdOutlineLogout } from "react-icons/md";
 import { eatingHistory } from "../API/eatingHistory.js";
 
-const backendURL = "http://100.100.45.89:3201";
+const backendURL = "https://caloriepaws-node.azurewebsites.net"
 const LS_CURRENT_WEIGHT = "ui:weightCurrent";
 
 // ===== config สี & เกณฑ์ =====
