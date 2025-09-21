@@ -198,14 +198,9 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
      คำนวณรวมจากรายการปัจจุบัน (เรียลไทม์)
      ====================== */
 const recalcTotals = (ingredients) => {
-  const added = ingredients.reduce(
-    (acc, it) => {
-      const macro = calcIngredientMacro(it);
-      const combined = addMacro(acc, macro);
-      combined.quantity = (acc.quantity || 0) + (it.quantity || 0); // รวม quantity
-      return combined;
-    },
-    { calories: 0, protein: 0, carbohydrates: 0, fat: 0, quantity: 0 }
+const added = ingredients.reduce( 
+  (acc, it) => addMacro(acc, calcIngredientMacro(it)),
+  { calories: 0, protein: 0, carbohydrates: 0, fat: 0, quantity: 0 }
   );
     return {
       calories: Math.round(added.calories || 0),
