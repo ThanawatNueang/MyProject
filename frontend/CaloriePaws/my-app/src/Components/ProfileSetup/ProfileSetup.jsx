@@ -125,9 +125,9 @@ export const ProfileSetup = () => {
   };
 
 return (
-  <div className="container">
+  <div className="container mx-auto">
     {/* Header */}
-    <div className="flex justify-between items-center pt-10 py-6 px-4 sm:px-8">
+    <div className="flex justify-between items-center pt-6 sm:pt-10 pb-4 sm:pb-6 px-4 sm:px-8">
       <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
         Calorie
         <span className="relative inline-block">
@@ -142,8 +142,8 @@ return (
     </div>
 
     {/* Body */}
-    <div className="flex flex-col gap-8 sm:gap-10 p-6 sm:p-10 items-center w-full">
-      <div className="flex rounded-full p-3 shadow-lg border-[0.5px] border-[#e4e4e4]">
+    <div className="flex flex-col gap-6 sm:gap-10 p-6 sm:p-10 items-center w-full">
+      <div className="flex rounded-full p-3 shadow-md border border-gray-200">
         <SiWelcometothejungle size={30} />
       </div>
 
@@ -151,50 +151,50 @@ return (
         Welcome to our app!
       </h1>
 
-      <p className="text-center text-[12px] sm:text-[13px] text-[#929292] font-light leading-relaxed px-4">
+      <p className="text-center text-sm sm:text-base text-gray-500 font-light leading-relaxed px-2 sm:px-4">
         Hi there!{" "}
-        <span className="text-[#000000] font-bold">
+        <span className="text-black font-semibold">
           What's your name and how old are you? 😊
         </span>
       </p>
 
       {/* Form */}
-      <div className="flex flex-col w-full gap-4 sm:gap-5 px-4 sm:px-8 pb-6 max-w-md sm:max-w-lg">
+      <div className="flex flex-col w-full gap-4 sm:gap-5 px-2 sm:px-6 pb-6 max-w-md">
         {/* Height */}
-        <div className="relative w-full">
+        <div className="relative">
           <GiBodyHeight
             size={16}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#696969] pointer-events-none"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
           />
           <input
             type="number"
             placeholder="Height (cm)"
             value={height}
             onChange={(e) => setHeight(e.target.value)}
-            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-[#e8e8e8] text-sm"
+            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-gray-300 text-sm"
           />
         </div>
 
         {/* Weight */}
-        <div className="relative w-full">
+        <div className="relative">
           <FaWeight
             size={16}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#696969] pointer-events-none"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
           />
           <input
             type="number"
             placeholder="Weight (kg)"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-[#e8e8e8] text-sm"
+            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-gray-300 text-sm"
           />
         </div>
 
         {/* Birth date */}
-        <div className="relative w-full">
+        <div className="relative">
           <FaCalendarAlt
             size={16}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#696969] pointer-events-none"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
           />
           <DatePicker
             selected={birthDate}
@@ -205,23 +205,23 @@ return (
             scrollableYearDropdown
             yearDropdownItemNumber={100}
             maxDate={new Date()}
-            className="block w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-[#e8e8e8] text-sm"
+            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-gray-300 text-sm"
             wrapperClassName="w-full"
           />
         </div>
 
-        {/* Age (read-only) */}
-        <div className="relative w-full">
+        {/* Age */}
+        <div className="relative">
           <FaPerson
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#696969] pointer-events-none"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
           />
           <input
             type="text"
             value={age}
             readOnly
             placeholder="Age"
-            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-[#e8e8e8] text-sm bg-white"
+            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-gray-300 text-sm bg-gray-50"
           />
         </div>
 
@@ -232,7 +232,9 @@ return (
             <button
               type="button"
               className={`rounded-full p-3 transition-colors ${
-                gender === "male" ? "bg-[#9FD3F9] text-white" : "bg-gray-300 text-white"
+                gender === "male"
+                  ? "bg-blue-300 text-white"
+                  : "bg-gray-300 text-white"
               }`}
               onClick={() => setGender("male")}
             >
@@ -241,7 +243,9 @@ return (
             <button
               type="button"
               className={`rounded-full p-3 transition-colors ${
-                gender === "female" ? "bg-[#F99FF7] text-white" : "bg-gray-300 text-white"
+                gender === "female"
+                  ? "bg-pink-300 text-white"
+                  : "bg-gray-300 text-white"
               }`}
               onClick={() => setGender("female")}
             >
@@ -253,11 +257,11 @@ return (
         {/* Next */}
         <div className="pt-2">
           <button
-            className={`w-full rounded-full p-2.5 font-Medi text-[20px] sm:text-[22px] transition-colors
+            className={`w-full rounded-full py-3 font-Medi text-lg sm:text-xl transition-colors
               ${
                 height && weight && birthDate && gender
                   ? "bg-black text-white"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed opacity-50"
               }`}
             onClick={handleNext}
             disabled={!height || !weight || !birthDate || !gender}
@@ -269,4 +273,5 @@ return (
     </div>
   </div>
 );
+
 };
