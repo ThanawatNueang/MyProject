@@ -9,7 +9,7 @@ import { SignIn } from './Components/Register/SignIn';
 import { SignUp } from './Components/Register/SignUp';
 import { ProfileSetup } from './Components/ProfileSetup/ProfileSetup';
 import { SetupSec } from './Components/ProfileSetup/SetupSec';
-import ActivityLevel from "./Components/ProfileSetup/aivityLevel";
+import ActivityLevel from "./Components/ProfileSetup/activityLevel.jsx";
 import { FitnessGoal } from './Components/ProfileSetup/FitnessGoal';
 import { GoalTarget } from './Components/ProfileSetup/GoalTarget';
 import { ProfileSetting } from './Components/ProfileSetup/ProfileSetting';
