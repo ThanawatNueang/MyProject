@@ -26,6 +26,8 @@ const allowedOrigins = [
   'http://100.88.251.63:5173',
   'http://localhost:5174',
   'http://localhost:5175',
+  "https://white-mud-0c5c409001.azurestaticapps.net",
+  "https://white-mud-0c5c40900.1.azurestaticapps.net",
 ];
 
 app.use(cors({
