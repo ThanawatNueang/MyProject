@@ -55,7 +55,6 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
     protein: 0,
     carbohydrates: 0,
     fat: 0,
-    quantity: 0
   });
 
   const uploadRef = useRef(null);
@@ -197,17 +196,16 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
   /* ======================
      คำนวณรวมจากรายการปัจจุบัน (เรียลไทม์)
      ====================== */
-const recalcTotals = (ingredients) => {
-const added = ingredients.reduce( 
-  (acc, it) => addMacro(acc, calcIngredientMacro(it)),
-  { calories: 0, protein: 0, carbohydrates: 0, fat: 0, quantity: 0 }
-  );
+  const recalcTotals = (ingredients) => {
+    const added = ingredients.reduce(
+      (acc, it) => addMacro(acc, calcIngredientMacro(it)),
+      { calories: 0, protein: 0, carbohydrates: 0, fat: 0 }
+    );
     return {
       calories: Math.round(added.calories || 0),
       protein: added.protein || 0,
       carbohydrates: added.carbohydrates || 0,
       fat: added.fat || 0,
-      quantity: added.quantity || 0,
     };
   };
 
@@ -727,7 +725,7 @@ const added = ingredients.reduce(
                     </h2>
                     <div className="flex items-center gap-1 mt-2">
                       <p className="poppins-semibold text-[12px] sm:text-[13px] text-[#5B5B5B] font-bold">
-                        {totals.protein || "-"} g
+                        {foodData?.serving_size || "-"} g
                       </p>
                     </div>
                   </div>
