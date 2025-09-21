@@ -65,62 +65,81 @@ export const ProfileSetting = () => {
   };
 
   return (
-    <div className="container">
-      <div className="flex justify-between items-center pt-10 py-6">
-        <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
-          Calorie
-          <span className="relative inline-block">
-            <div className="oval oval1 absolute"></div>
-            <div className="oval oval2 absolute"></div>
-            <div className="oval oval3 absolute"></div>
-            <div className="oval oval4 absolute"></div>
-            <div className="oval oval5 absolute"></div>
-            Paws
-          </span>
-        </Link>
-      </div>
+  <div className="container mx-auto">
+    {/* Header */}
+    <div className="flex justify-between items-center pt-6 sm:pt-10 pb-4 sm:pb-6 px-4 sm:px-8">
+      <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
+        Calorie
+        <span className="relative inline-block">
+          <div className="oval oval1 absolute"></div>
+          <div className="oval oval2 absolute"></div>
+          <div className="oval oval3 absolute"></div>
+          <div className="oval oval4 absolute"></div>
+          <div className="oval oval5 absolute"></div>
+          Paws
+        </span>
+      </Link>
+    </div>
 
-      <div className="flex flex-col gap-10 p-10 items-center justify-center w-full h-full">
-        <h1 className="font-Medi text-5xl text-center">Pick a profile picture 📸</h1>
-        <p className="text-center text-[13px] text-[#929292] font-light">
-          Have a favorite selfie? Upload it now.
-        </p>
+    {/* Body */}
+    <div className="flex flex-col items-center justify-center w-full gap-6 sm:gap-10 p-6 sm:p-10">
+      <h1 className="font-Medi text-3xl sm:text-5xl text-center">
+        Pick a profile picture 📸
+      </h1>
+      <p className="text-center text-sm sm:text-base text-gray-500 font-light">
+        Have a favorite selfie? Upload it now.
+      </p>
 
-        <div className="flex items-center flex-col w-full gap-5 px-80 ">
-          <div className="flex w-60 h-60">
-            <div className="relative z-10">
-              <label htmlFor="fileInput" className="cursor-pointer">
-                <img
-                  src={imagePreview || user}
-                  alt="Profile Preview"
-                  className="rounded-full w-full h-full object-cover"
-                  onError={(e) => (e.currentTarget.src = user)}
-                />
-                <div className="bg-black text-white text-3xl absolute bottom-0 right-0 z-20 p-5 rounded-full">
-                  <FaPlus />
-                </div>
-              </label>
-              <input
-                type="file"
-                id="fileInput"
-                accept="image/jpeg, image/jpg, image/png"
-                className="hidden"
-                onChange={handleImageChange}
+      {/* Avatar picker */}
+      <div className="w-full max-w-md sm:max-w-lg px-2 sm:px-0">
+        <div className="flex items-center justify-center">
+          <div className="relative">
+            <label
+              htmlFor="fileInput"
+              className="cursor-pointer block relative"
+              aria-label="Upload profile image"
+            >
+              {/* รูปโปรไฟล์ */}
+              <img
+                src={imagePreview || user}
+                alt="Profile Preview"
+                onError={(e) => (e.currentTarget.src = user)}
+                className="rounded-full object-cover w-40 h-40 sm:w-56 sm:h-56 shadow-sm border border-gray-200"
               />
-            </div>
+              {/* ปุ่ม + มุมขวาล่าง */}
+              <div className="absolute -bottom-2 -right-2 sm:bottom-0 sm:right-0 bg-black text-white text-2xl sm:text-3xl p-3 sm:p-4 rounded-full shadow-md">
+                <FaPlus />
+              </div>
+            </label>
+
+            <input
+              type="file"
+              id="fileInput"
+              accept="image/jpeg, image/jpg, image/png"
+              className="hidden"
+              onChange={handleImageChange}
+            />
           </div>
         </div>
+        {/* hint เล็ก ๆ */}
+        <p className="text-center text-xs sm:text-sm text-gray-500 mt-3">
+          JPG or PNG • Up to 5&nbsp;MB
+        </p>
+      </div>
 
-        <div className="flex w-full gap-3 px-80 pt-5">
+      {/* Actions */}
+      <div className="w-full max-w-md sm:max-w-lg mt-4 sm:mt-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
-            className="w-full cursor-pointer bg-black rounded-full p-2.5 text-white font-Medi text-[22px]"
+            className="w-full rounded-full py-3 bg-black text-white font-Medi text-lg sm:text-xl disabled:opacity-50"
             onClick={handleBack}
             disabled={loading}
           >
             Back
           </button>
           <button
-            className="w-full cursor-pointer bg-black rounded-full p-2.5 text-white font-Medi text-[22px]"
+            className={`w-full rounded-full py-3 font-Medi text-lg sm:text-xl transition
+              ${!loading ? "bg-black text-white" : "bg-gray-300 text-white cursor-not-allowed"}`}
             onClick={handleNext}
             disabled={loading}
           >
@@ -129,5 +148,7 @@ export const ProfileSetting = () => {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
+
 };

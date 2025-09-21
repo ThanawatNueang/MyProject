@@ -95,68 +95,81 @@ export const GoalTarget = () => {
     navigate("/finessgoals");
   };
 
-  return (
-    <div className="container">
-      <div className="flex justify-between items-center pt-10 py-6">
-        <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
-          Calorie
-          <span className="relative inline-block">
-            <div className="oval oval1 absolute"></div>
-            <div className="oval oval2 absolute"></div>
-            <div className="oval oval3 absolute"></div>
-            <div className="oval oval4 absolute"></div>
-            <div className="oval oval5 absolute"></div>
-            Paws
-          </span>
-        </Link>
+return (
+  <div className="container mx-auto">
+    {/* Header */}
+    <div className="flex justify-between items-center pt-6 sm:pt-10 pb-4 sm:pb-6 px-4 sm:px-8">
+      <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
+        Calorie
+        <span className="relative inline-block">
+          <div className="oval oval1 absolute"></div>
+          <div className="oval oval2 absolute"></div>
+          <div className="oval oval3 absolute"></div>
+          <div className="oval oval4 absolute"></div>
+          <div className="oval oval5 absolute"></div>
+          Paws
+        </span>
+      </Link>
+    </div>
+
+    {/* Body */}
+    <div className="flex flex-col items-center w-full gap-6 sm:gap-10 p-6 sm:p-10">
+      <div className="flex rounded-full p-3 shadow-md border border-gray-200">
+        <FaWeightScale size={20} />
       </div>
 
-      <div className="flex flex-col gap-10 p-10 items-center w-full h-full">
-        <div className="flex rounded-full p-3 shadow-lg border-[0.5px] border-[#e4e4e4]">
-          <FaWeightScale size={20} />
+      <h1 className="font-Medi text-3xl sm:text-5xl text-center">
+        {goal === "lose"
+          ? "What would be your ideal weight?"
+          : goal === "gain"
+          ? "What would be your ideal gain?"
+          : "What would be your ideal weight?"}
+      </h1>
+
+      {/* Input */}
+      <div className="w-full max-w-md sm:max-w-lg px-2 sm:px-0">
+        <div className="flex flex-col gap-4 sm:gap-5 text-center">
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.1"
+            placeholder="Enter amount in kg"
+            value={kg}
+            onChange={handleKgChange}
+            className="w-full shadow-sm rounded-full py-3 px-6 outline-none border border-gray-300 text-sm sm:text-base"
+            aria-label="Target weight (kg)"
+          />
+          {/* hint (optional) */}
+          <p className="text-xs sm:text-sm text-gray-500">
+            Use decimals if needed, e.g. <span className="font-medium">65.5</span> kg
+          </p>
         </div>
+      </div>
 
-        <h1 className="font-Medi text-5xl text-center">
-          {goal === "lose"
-            ? "What would be your ideal weight?"
-            : goal === "gain"
-            ? "What would be your ideal gain?"
-            : "What would be your ideal weight?"}
-        </h1>
+      {/* Actions */}
+      <div className="w-full max-w-md sm:max-w-lg mt-4 sm:mt-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            className="w-full rounded-full py-3 bg-black text-white font-Medi text-lg sm:text-xl disabled:opacity-50"
+            onClick={handleBack}
+            disabled={loading}
+          >
+            Back
+          </button>
 
-        <div className="flex flex-col w-full gap-5 px-80 ">
-          <div className="flex flex-col gap-6 relative text-center w-full">
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.1"
-              placeholder="Enter amount in kg"
-              value={kg}
-              onChange={handleKgChange}
-              className="w-full max-w-md mx-auto shadow-sm rounded-full py-3 px-6 outline-none border border-[#e8e8e8] text-sm"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-5">
-            <button
-              className="w-full cursor-pointer bg-black rounded-full p-2.5 text-white font-Medi text-[22px]"
-              onClick={handleBack}
-              disabled={loading}
-            >
-              Back
-            </button>
-            <button
-              className={`w-full cursor-pointer rounded-full p-2.5 font-Medi text-[22px]
-                ${kg ? "bg-black text-white" : "bg-gray-300 text-white"}`}
-              onClick={handleNext}
-              disabled={!kg || loading}
-            >
-              {loading ? "Saving..." : "Next"}
-            </button>
-          </div>
+          <button
+            className={`w-full rounded-full py-3 font-Medi text-lg sm:text-xl transition
+              ${kg ? "bg-black text-white" : "bg-gray-300 text-white cursor-not-allowed"}`}
+            onClick={handleNext}
+            disabled={!kg || loading}
+          >
+            {loading ? "Saving..." : "Next"}
+          </button>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
+
 };
