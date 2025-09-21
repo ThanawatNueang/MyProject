@@ -124,7 +124,7 @@ export const ProfileSetup = () => {
     }
   };
 
-  return (
+ return (
     <div className="container">
       <div className="flex justify-between items-center pt-10 py-6">
         <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
@@ -151,7 +151,10 @@ export const ProfileSetup = () => {
             What's your name and how old are you? 😊
           </span>
         </p>
+
+        {/* ฟอร์มคอลัมน์เดียว สไตล์ตามที่ให้มา */}
         <div className="flex flex-col w-full gap-5 px-80 pt-5">
+          {/* Height */}
           <div className="relative w-full">
             <GiBodyHeight
               size={13}
@@ -165,6 +168,8 @@ export const ProfileSetup = () => {
               className="w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm"
             />
           </div>
+
+          {/* Weight */}
           <div className="relative w-full">
             <FaWeight
               size={13}
@@ -177,9 +182,10 @@ export const ProfileSetup = () => {
               onChange={(e) => setWeight(e.target.value)}
               className="w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm"
             />
-            {/* toggle show/hide password */}
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#696969] cursor-pointer"></div>
           </div>
+
+          {/* Birth date */}
           <div className="flex flex-col w-full relative">
             <FaCalendarAlt
               size={13}
@@ -196,10 +202,10 @@ export const ProfileSetup = () => {
               maxDate={new Date()}
               className="block w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm"
             />
-
-            {/* toggle show/hide password */}
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#696969] cursor-pointer"></div>
           </div>
+
+          {/* Age (read-only) */}
           <div className="relative w-full">
             <FaPerson
               size={15}
@@ -207,53 +213,53 @@ export const ProfileSetup = () => {
             />
             <input
               type="text"
-              value={age}
+              value={age === "" ? "-" : String(age)}
               readOnly
               placeholder="Age"
               className="w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm"
             />
-            {/* toggle show/hide password */}
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#696969] cursor-pointer"></div>
           </div>
+
+          {/* Gender */}
           <div className="flex flex-col gap-4 items-center">
             <p>Gender</p>
             <div className="flex gap-5">
               <button
-                className={`rounded-full p-3 cursor-pointer
-                      ${
-                        gender === "male"
-                          ? "bg-[#9FD3F9] text-white"
-                          : "text-white bg-gray-300"
-                      }
-                      `}
+                type="button"
+                className={`rounded-full p-3 cursor-pointer ${
+                  gender === "male"
+                    ? "bg-[#9FD3F9] text-white"
+                    : "text-white bg-gray-300"
+                }`}
                 onClick={() => setGender("male")}
               >
                 <FaMale />
               </button>
               <button
-                className={`rounded-full p-3 cursor-pointer
-                      ${
-                        gender === "female"
-                          ? "bg-[#F99FF7] text-white"
-                          : "bg-gray-300 text-white"
-                      }
-                      `}
+                type="button"
+                className={`rounded-full p-3 cursor-pointer ${
+                  gender === "female"
+                    ? "bg-[#F99FF7] text-white"
+                    : "bg-gray-300 text-white"
+                }`}
                 onClick={() => setGender("female")}
               >
                 <FaFemale />
               </button>
             </div>
           </div>
+
+          {/* Next */}
           <div className="pt-5">
             <button
-              className={`w-full cursor-pointer bg-black rounded-full p-2.5 text-white font-Medi text-[22px]
-                ${
-                  height && weight && birthDate && gender
-                    ? "bg-black text-white"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+              className={`w-full cursor-pointer rounded-full p-2.5 font-Medi text-[22px] ${
+                height && weight && birthDate && gender
+                  ? "bg-black text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
               onClick={handleNext}
-              disabled={!height || !weight || !birthDate || !gender}
+              disabled={!height || !weight || !birthDate || !gender || loading}
             >
               {loading ? "Saving..." : "Next"}
             </button>
