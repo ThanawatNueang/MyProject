@@ -71,7 +71,7 @@ export const recognizeFoodFromImage = async (req, res, next) => {
   rejectUnauthorized: false
 });
 
-const dotnetResp = await fetch('https://localhost:7014/Detect/detect', {
+const dotnetResp = await fetch('https://caloriepaws-sea.azurewebsites.net/Detect/detect', {
   method: 'POST',
   body: form,
   headers: form.getHeaders(),
