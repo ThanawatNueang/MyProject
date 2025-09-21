@@ -124,148 +124,149 @@ export const ProfileSetup = () => {
     }
   };
 
- return (
-    <div className="container">
-      <div className="flex justify-between items-center pt-10 py-6">
-        <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
-          Calorie
-          <span className="relative inline-block">
-            <div className="oval oval1 absolute"></div>
-            <div className="oval oval2 absolute"></div>
-            <div className="oval oval3 absolute"></div>
-            <div className="oval oval4 absolute"></div>
-            <div className="oval oval5 absolute"></div>
-            Paws
-          </span>
-        </Link>
+return (
+  <div className="container">
+    {/* Header */}
+    <div className="flex justify-between items-center pt-10 py-6 px-4 sm:px-8">
+      <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
+        Calorie
+        <span className="relative inline-block">
+          <div className="oval oval1 absolute"></div>
+          <div className="oval oval2 absolute"></div>
+          <div className="oval oval3 absolute"></div>
+          <div className="oval oval4 absolute"></div>
+          <div className="oval oval5 absolute"></div>
+          Paws
+        </span>
+      </Link>
+    </div>
+
+    {/* Body */}
+    <div className="flex flex-col gap-8 sm:gap-10 p-6 sm:p-10 items-center w-full">
+      <div className="flex rounded-full p-3 shadow-lg border-[0.5px] border-[#e4e4e4]">
+        <SiWelcometothejungle size={30} />
       </div>
 
-      <div className="flex flex-col gap-10 p-10 items-center w-full h-full">
-        <div className="flex rounded-full p-3 shadow-lg border-[0.5px] border-[#e4e4e4]">
-          <SiWelcometothejungle size={30} />
+      <h1 className="font-Medi text-3xl sm:text-5xl text-center">
+        Welcome to our app!
+      </h1>
+
+      <p className="text-center text-[12px] sm:text-[13px] text-[#929292] font-light leading-relaxed px-4">
+        Hi there!{" "}
+        <span className="text-[#000000] font-bold">
+          What's your name and how old are you? 😊
+        </span>
+      </p>
+
+      {/* Form */}
+      <div className="flex flex-col w-full gap-4 sm:gap-5 px-4 sm:px-8 pb-6 max-w-md sm:max-w-lg">
+        {/* Height */}
+        <div className="relative w-full">
+          <GiBodyHeight
+            size={16}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#696969] pointer-events-none"
+          />
+          <input
+            type="number"
+            placeholder="Height (cm)"
+            value={height}
+            onChange={(e) => setHeight(e.target.value)}
+            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-[#e8e8e8] text-sm"
+          />
         </div>
-        <h1 className="font-Medi text-5xl">Welcome to our app!</h1>
-        <p className="text-center text-[13px] text-[#929292] font-light">
-          Hi there!{" "}
-          <span className="text-[#000000] font-bold">
-            What's your name and how old are you? 😊
-          </span>
-        </p>
 
-        {/* ฟอร์มคอลัมน์เดียว สไตล์ตามที่ให้มา */}
-        <div className="flex flex-col w-full gap-5 px-80 pt-5">
-          {/* Height */}
-          <div className="relative w-full">
-            <GiBodyHeight
-              size={13}
-              className="absolute left-6 top-1/2 transform -translate-y-1/2 text-[#696969]"
-            />
-            <input
-              type="number"
-              placeholder="Height (cm)"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              className="w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm"
-            />
-          </div>
+        {/* Weight */}
+        <div className="relative w-full">
+          <FaWeight
+            size={16}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#696969] pointer-events-none"
+          />
+          <input
+            type="number"
+            placeholder="Weight (kg)"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-[#e8e8e8] text-sm"
+          />
+        </div>
 
-          {/* Weight */}
-          <div className="relative w-full">
-            <FaWeight
-              size={13}
-              className="absolute left-6 top-1/2 transform -translate-y-1/2 text-[#696969]"
-            />
-            <input
-              type="number"
-              placeholder="Weight (kg)"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              className="w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm"
-            />
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#696969] cursor-pointer"></div>
-          </div>
+        {/* Birth date */}
+        <div className="relative w-full">
+          <FaCalendarAlt
+            size={16}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#696969] pointer-events-none"
+          />
+          <DatePicker
+            selected={birthDate}
+            onChange={handleDateChange}
+            dateFormat="MM/dd/yyyy"
+            placeholderText="Select your birth date"
+            showYearDropdown
+            scrollableYearDropdown
+            yearDropdownItemNumber={100}
+            maxDate={new Date()}
+            className="block w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-[#e8e8e8] text-sm"
+            wrapperClassName="w-full"
+          />
+        </div>
 
-          {/* Birth date */}
-          <div className="flex flex-col w-full relative">
-            <FaCalendarAlt
-              size={13}
-              className="absolute left-6 top-1/2 transform -translate-y-1/2 text-[#696969]"
-            />
-            <DatePicker
-              selected={birthDate}
-              onChange={handleDateChange}
-              dateFormat="MM/dd/yyyy"
-              placeholderText="Select your birth date"
-              showYearDropdown
-              scrollableYearDropdown
-              yearDropdownItemNumber={100}
-              maxDate={new Date()}
-              className="block w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm"
-            />
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#696969] cursor-pointer"></div>
-          </div>
+        {/* Age (read-only) */}
+        <div className="relative w-full">
+          <FaPerson
+            size={18}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#696969] pointer-events-none"
+          />
+          <input
+            type="text"
+            value={age}
+            readOnly
+            placeholder="Age"
+            className="w-full shadow-sm rounded-full py-3 pl-12 pr-4 outline-none border border-[#e8e8e8] text-sm bg-white"
+          />
+        </div>
 
-          {/* Age (read-only) */}
-          <div className="relative w-full">
-            <FaPerson
-              size={15}
-              className="absolute left-6 top-1/2 transform -translate-y-1/2 text-[#696969]"
-            />
-            <input
-              type="text"
-              value={age === "" ? "-" : String(age)}
-              readOnly
-              placeholder="Age"
-              className="w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm"
-            />
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#696969] cursor-pointer"></div>
-          </div>
-
-          {/* Gender */}
-          <div className="flex flex-col gap-4 items-center">
-            <p>Gender</p>
-            <div className="flex gap-5">
-              <button
-                type="button"
-                className={`rounded-full p-3 cursor-pointer ${
-                  gender === "male"
-                    ? "bg-[#9FD3F9] text-white"
-                    : "text-white bg-gray-300"
-                }`}
-                onClick={() => setGender("male")}
-              >
-                <FaMale />
-              </button>
-              <button
-                type="button"
-                className={`rounded-full p-3 cursor-pointer ${
-                  gender === "female"
-                    ? "bg-[#F99FF7] text-white"
-                    : "bg-gray-300 text-white"
-                }`}
-                onClick={() => setGender("female")}
-              >
-                <FaFemale />
-              </button>
-            </div>
-          </div>
-
-          {/* Next */}
-          <div className="pt-5">
+        {/* Gender */}
+        <div className="flex flex-col gap-3 items-center pt-2">
+          <p className="text-sm">Gender</p>
+          <div className="flex gap-4">
             <button
-              className={`w-full cursor-pointer rounded-full p-2.5 font-Medi text-[22px] ${
+              type="button"
+              className={`rounded-full p-3 transition-colors ${
+                gender === "male" ? "bg-[#9FD3F9] text-white" : "bg-gray-300 text-white"
+              }`}
+              onClick={() => setGender("male")}
+            >
+              <FaMale />
+            </button>
+            <button
+              type="button"
+              className={`rounded-full p-3 transition-colors ${
+                gender === "female" ? "bg-[#F99FF7] text-white" : "bg-gray-300 text-white"
+              }`}
+              onClick={() => setGender("female")}
+            >
+              <FaFemale />
+            </button>
+          </div>
+        </div>
+
+        {/* Next */}
+        <div className="pt-2">
+          <button
+            className={`w-full rounded-full p-2.5 font-Medi text-[20px] sm:text-[22px] transition-colors
+              ${
                 height && weight && birthDate && gender
                   ? "bg-black text-white"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
-              onClick={handleNext}
-              disabled={!height || !weight || !birthDate || !gender || loading}
-            >
-              {loading ? "Saving..." : "Next"}
-            </button>
-          </div>
+            onClick={handleNext}
+            disabled={!height || !weight || !birthDate || !gender}
+          >
+            {loading ? "Saving..." : "Next"}
+          </button>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };
