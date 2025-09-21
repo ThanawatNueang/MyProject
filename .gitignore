@@ -1,6 +1,5 @@
 backend/public/uploads/
 ai/
-/frontend/
 node_modules/
 **/node_modules/
 dist/
