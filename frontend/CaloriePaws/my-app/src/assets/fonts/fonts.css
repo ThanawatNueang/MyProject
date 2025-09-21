@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fahkwang:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
+
+.poppins-semibold {
+  font-family: "Poppins", sans-serif;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.Fahkwang {
+  font-family: "Fahkwang", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'operatta';
+  src: url('./Operetta18-Regular.woff') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+.font-prompt {
+  font-family: 'operatta';
+}
+
+@font-face {
+  font-family: 'oplight';
+  src: url('./Operetta18-Light.woff') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+.font-oplight {
+  font-family: 'oplight';
+}
+
+@font-face {
+  font-family: 'operattaDe';
+  src: url('./Operetta18-DemiBold.woff') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-Demi {
+  font-family: 'operattaDe';
+}
+
+@font-face {
+  font-family: 'operattaUl';
+  src: url('./Cocogoose-Pro-Ultralight-Italic-trial.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-Ul {
+  font-family: 'operattaUl';
+}
+
+@font-face {
+  font-family: 'inter';
+  src: url('./Inter-VariableFont_opsz,wght.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+.font-inter {
+  font-family: 'inter';
+}
+
+@font-face {
+  font-family: 'coco';
+  src: url('./Cocogoose-Pro-Semilight-Italic-trial.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-coco {
+  font-family: 'coco';
+}
+
+@font-face {
+  font-family: 'cocoSemi';
+  src: url('./Cocogoose-Pro-Semilight-Italic-trial.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-Semi{
+  font-family: 'cocoSemi';
+}
+
+@font-face {
+  font-family: 'medium';
+  src: url('./Operetta18-Medium.woff') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-Medi{
+  font-family: 'medium';
+}
+
+@font-face {
+  font-family: 'cocoLight';
+  src: url('./Cocogoose-Pro-Bold-trial.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-cocoLight{
+  font-family: 'cocoLight';
+}
+
+@font-face {
+  font-family: 'cocoPro';
+  src: url('./Cocogoose-Pro-Semilight-trial.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-cocoPro{
+  font-family: 'cocoPro';
+}
+
+@font-face {
+  font-family: 'light';
+  src: url('./Cocogoose-Pro-Light-trial.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-light{
+  font-family: 'light';
+}
