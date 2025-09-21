@@ -20,8 +20,9 @@ export const loginUser = async (req, res) => {
       expires: expiresAt,
       token,
       httpOnly: true,
-      secure: NODE_ENV === 'production',
-      sameSite: NODE_ENV === 'production' ? 'None' : 'None',
+      secure: true,
+      sameSite: 'None',
+      expires: expiresAt,
     };
 
     res.cookie('jwtToken', token, cookieOptions);
