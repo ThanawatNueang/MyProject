@@ -9,13 +9,14 @@ import {
   Rectangle,
 } from "recharts";
 import { IoBookmark, IoCloseCircle } from "react-icons/io5";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { nutritionGoal } from "../API/nutritionGoal";
 import { BsFire } from "react-icons/bs";
 import { MdDelete } from "react-icons/md";
 import { MdDeleteOutline } from "react-icons/md";
 import { FaRegEdit } from "react-icons/fa";
 import { readLocalHistory } from "../../utils/eatingHistory";
+import { RiArrowDropDownLine } from "react-icons/ri";
 import {
   fetchLast7Days,
   updateEatingHistory,
@@ -205,6 +206,9 @@ export const Aside = () => {
   const [isListOpen, setIsListOpen] = useState(false);
   const [allMeals, setAllMeals] = useState([]);
   const [todayMeals, setTodayMeals] = useState([]);
+  //เพิ่มโค้ด 2 ตัวอแปรนี้ลงไปด้วย
+  const [isMealOpen, setIsMealOpen] = useState([]);
+  const ingredientRefs = useRef([]);
 
   // กราฟย้อนหลัง 7 วัน
   const [macro7d, setMacro7d] = useState([]);
@@ -307,6 +311,10 @@ export const Aside = () => {
       window.removeEventListener("keydown", onEsc);
     };
   }, [isListOpen]);
+
+  const openMealsToggle = (id) => {
+    setIsMealOpen(isMealOpen === id ? null : id);
+  };
 
   const openList = async () => {
     const data = await fetchNormalized();
@@ -502,8 +510,18 @@ export const Aside = () => {
           ? updater(f.customIngredients || [])
           : updater,
     }));
-  const addIngredientRow = () =>
+  const addIngredientRow = () => {
     setCI((arr) => [...arr, { name: "", quantity: 0, unit: "g" }]);
+
+    // scroll หลังจาก DOM update
+    setTimeout(() => {
+      const lastEl = ingredientRefs.current[ingredientRefs.current.length - 1];
+      if (lastEl) {
+        lastEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }, 50);
+  };
+
   const removeIngredientRow = (idx) =>
     setCI((arr) => arr.filter((_, i) => i !== idx));
   const updateIngredientField = (idx, field, value) =>
@@ -521,6 +539,7 @@ export const Aside = () => {
     [nutrition]
   );
 
+  //เพิ่มโค้ดนี้ขึ้นมาด้วย
   const fmtG = (n) =>
     `${Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })} g`;
 
@@ -636,7 +655,7 @@ export const Aside = () => {
                   className="font-semibold"
                   style={{ color: MACRO_COLORS.carbs }}
                 >
-                  {fmtG(todayMacros.carbs)}
+                  {/* {fmtG(todayMacros.carbs)} */}
                 </span>
               </span>
               <span className="inline-flex items-center gap-2">
@@ -649,7 +668,7 @@ export const Aside = () => {
                   className="font-semibold"
                   style={{ color: MACRO_COLORS.fat }}
                 >
-                  {fmtG(todayMacros.fat)}
+                  {/* {fmtG(todayMacros.fat)} */}
                 </span>
               </span>
               <span className="inline-flex items-center gap-2">
@@ -662,7 +681,7 @@ export const Aside = () => {
                   className="font-semibold"
                   style={{ color: MACRO_COLORS.protein }}
                 >
-                  {fmtG(todayMacros.protein)}
+                  {/* {fmtG(todayMacros.protein)} */}
                 </span>
               </span>
             </div>
@@ -709,52 +728,80 @@ export const Aside = () => {
                       <div className="text-base lg:text-md poppins-semibold truncate">
                         {meal.displayName ?? meal.custom_food_name ?? meal.name}
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex items-center justify-center bg-[#2C2C2C] w-[17px] h-[17px] rounded-full">
-                          <BsFire className="text-white" size={10} />
-                        </div>
-                        <div className="text-[11px] poppins-semibold">
-                          {meal.calories} Cal
-                        </div>
-                      </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button
-                        className="flex items-center gap-1 text-xs px-3 py-1 rounded-full border border-[#A9A9A9] hover:bg-black hover:text-white transition"
+                        className="flex items-center gap-1 text-xs px-3 py-1 cursor-pointer rounded-full border border-[#A9A9A9] hover:bg-black hover:text-white transition"
                         onClick={() => openEdit(meal)}
                       >
                         <FaRegEdit size={12} /> Edit
                       </button>
                       <button
-                        className="flex items-center gap-1 text-xs px-3 py-1 rounded-full border border-[#A9A9A9] hover:bg-black hover:text-white transition"
+                        className="flex items-center gap-1 text-xs px-3 py-1 cursor-pointer rounded-full border border-[#A9A9A9] hover:bg-black hover:text-white transition"
                         onClick={() => deleteMeal(meal.id)}
                       >
                         <MdDeleteOutline size={13} /> Delete
                       </button>
+                      <div
+                        className="flex items-center gap-1 rounded-full px-2 py-1 bg-black text-white cursor-pointer
+                        transition-colors"
+                        onClick={() => openMealsToggle(meal.id)}
+                        aria-expanded={isMealOpen === meal.id}
+                        aria-controls={`meal-details-${meal.id}`}
+                      >
+                        <RiArrowDropDownLine
+                          size={18}
+                          className={`transition-transform duration-300 ${
+                            isMealOpen === meal.id ? "rotate-180" : "rotate-0"
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {meal.notes && (
-                    <p className="text-[11px] md:text-[12px] Fahkwang py-4 line-clamp-3 md:line-clamp-2">
-                      {meal.notes}
-                    </p>
+                  <div className="flex items-center gap-2 mt-4">
+                    <div className="flex items-center justify-center bg-[#2C2C2C] w-[17px] h-[17px] rounded-full">
+                      <BsFire className="text-white" size={10} />
+                    </div>
+                    <div className="text-[13px] poppins-semibold">
+                      {meal.calories} Cal
+                    </div>
+                  </div>
+                  {isMealOpen === meal.id && (
+                    <div
+                      id={`meal-details-${meal.id}`}
+                      className={`
+    overflow-hidden transition-all duration-300
+    ${
+      isMealOpen === meal.id
+        ? "max-h-[600px] opacity-100 mt-3"
+        : "max-h-0 opacity-0"
+    }
+  `}
+                    >
+                      {meal.notes && (
+                        <p className="text-[11px] md:text-[12px] Fahkwang py-4 line-clamp-3 md:line-clamp-2">
+                          {meal.notes}
+                        </p>
+                      )}
+                      {Array.isArray(meal.customIngredients) &&
+                        meal.customIngredients.length > 0 && (
+                          <div className="mt-2">
+                            <div className="text-[12px] font-semibold mb-2">
+                              Ingredients
+                            </div>
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-[#444]">
+                              {meal.customIngredients.map((it, i) => (
+                                <li key={i}>
+                                  • {it.name} — {it.quantity ?? 0}{" "}
+                                  {it.unit ?? "-"}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                    </div>
                   )}
-
-                  {Array.isArray(meal.customIngredients) &&
-                    meal.customIngredients.length > 0 && (
-                      <div className="mt-2">
-                        <div className="text-[12px] font-semibold mb-2">
-                          Ingredients
-                        </div>
-                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-[#444]">
-                          {meal.customIngredients.map((it, i) => (
-                            <li key={i}>
-                              • {it.name} — {it.quantity ?? 0} {it.unit ?? "-"}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
 
                   <div className="flex items-start gap-2 justify-start pt-5">
                     <div className="flex items-center gap-1 border-r border-r-[#A9A9A9] pr-2">
@@ -802,7 +849,7 @@ export const Aside = () => {
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b">
-              <div className="flex items-center gap-2">
+              <divร className="flex items-center gap-2">
                 {isEditing && (
                   <button
                     className="text-sm px-3 py-1 rounded-full border hover:bg-black hover:text-white"
@@ -818,7 +865,7 @@ export const Aside = () => {
                 <h3 className="text-lg lg:text-xl font-semibold">
                   {isEditing ? "Edit Meal" : "All Saved Meals"}
                 </h3>
-              </div>
+              </divร>
               <button className="px-3 py-1 cursor-pointer" onClick={closeList}>
                 <IoCloseCircle size={25} />
               </button>
@@ -863,13 +910,6 @@ export const Aside = () => {
                             </div>
 
                             <div className="shrink-0 flex items-center gap-2">
-                              <button
-                                className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white cursor-pointer"
-                                onClick={() => setAsLatest(m.id)}
-                                title="Set as latest"
-                              >
-                                Use
-                              </button>
                               <button
                                 className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white cursor-pointer"
                                 onClick={() => openEditFromList(m)} // ✅ เปิดฟอร์มในโมดัล
@@ -1014,6 +1054,7 @@ export const Aside = () => {
                         {form.customIngredients.map((it, idx) => (
                           <div
                             key={idx}
+                            ref={(el) => (ingredientRefs.current[idx] = el)}
                             className="grid grid-cols-12 gap-1 items-center bg-white/70 border border-neutral-200 rounded-xl p-1 overflow-visible"
                           >
                             {/* Name + Suggestion */}

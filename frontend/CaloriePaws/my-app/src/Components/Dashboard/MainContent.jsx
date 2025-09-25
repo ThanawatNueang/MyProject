@@ -21,7 +21,10 @@ import { MdOutlineLogout } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import { logoutUser } from "../API/auth";
 import { eatingHistory } from "../API/eatingHistory.js";
+import { GiChickenLeg } from "react-icons/gi";
 import { BsFire } from "react-icons/bs";
+import { MdBakeryDining } from "react-icons/md";
+import { FaTint } from "react-icons/fa";
 import {
   TbTargetArrow,
   TbArrowDownRight,
@@ -128,6 +131,8 @@ export const MainContent = () => {
   const [weightInput, setWeightInput] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef(null);
+
+  const [macro7d, setMacro7d] = useState([]);
 
   const navigate = useNavigate();
 
@@ -517,6 +522,49 @@ export const MainContent = () => {
     };
   }, [isMenuOpen]);
 
+  //เพิ่มโค้ดนี้
+  const fmtG = (n) =>
+    `${Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })} g`;
+
+  const toNum = (v) => {
+    if (v == null) return 0;
+    if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+    return (
+      Number.parseFloat(
+        String(v)
+          .replace(/[^\d.,-]/g, "")
+          .replace(",", ".")
+      ) || 0
+    );
+  };
+  const pickFieldNum = (obj, keys) => {
+    for (const k of keys)
+      if (obj?.[k] != null && obj[k] !== "") return toNum(obj[k]);
+    return 0;
+  };
+
+  const todayMacros = useMemo(() => {
+    const s = summaryCalories || {};
+    return {
+      protein: pickFieldNum(s, [
+        "protein",
+        "protein_g",
+        "proteinGrams",
+        "totalProtein",
+      ]),
+      carbs: pickFieldNum(s, [
+        "carbs",
+        "carb",
+        "carbohydrate",
+        "carbohydrates",
+        "carbs_g",
+        "carb_g",
+        "totalCarbs",
+      ]),
+      fat: pickFieldNum(s, ["fat", "fats", "fat_g", "fatGrams", "totalFat"]),
+    };
+  }, [summaryCalories]);
+
   return (
     <div className="flex flex-col w-full min-w-0 px-4 sm:px-6 lg:px-8 overflow-x-hidden max-w-screen-2xl mx-auto">
       <div className="flex items-center gap-8">
@@ -720,18 +768,23 @@ export const MainContent = () => {
                 <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
                   Protein
                 </h3>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-none tracking-tight">
-                    {macroTargets.protein.grams}
-                  </span>
-                  <span className="text-xl md:text-2xl font-semibold opacity-90">
-                    g
+                 <h3 className="text-[13px] font-semibold">Consumed today</h3>
+                <div className="mt-2 flex items-baseline gap-2 pb-2">
+                  <span className="text-3xl sm:text-4xl font-extrabold leading-none tracking-tight">
+                    {fmtG(todayMacros.protein)}
                   </span>
                 </div>
-                <p className="mt-2 text-sm opacity-90">
+                {/* <p className="mt-2 text-sm opacity-90">
                   ≈ {macroTargets.protein.kcal.toLocaleString("th-TH")} kcal •{" "}
                   {macroTargets.protein.ratio}%
-                </p>
+                </p> */}
+                <div className="flex items-center gap-2 text-sm">
+                  <GiChickenLeg />
+                  <span className="font-medium">Daily target</span>
+                  <span className="font-medium">
+                    {macroTargets.protein.grams} g
+                  </span>
+                </div>
               </div>
 
               {/* Carbs */}
@@ -744,18 +797,25 @@ export const MainContent = () => {
                 <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
                   Carbs
                 </h3>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-none tracking-tight">
-                    {macroTargets.carbs.grams}
-                  </span>
-                  <span className="text-xl md:text-2xl font-semibold opacity-90">
-                    g
+                <h3 className="text-[13px] font-semibold">Consumed today</h3>
+                <div className="mt-2 flex items-baseline gap-2 pb-2">
+                  <span className="text-3xl sm:text-4xl font-extrabold leading-none tracking-tight">
+                    {fmtG(todayMacros.carbs)}
                   </span>
                 </div>
-                <p className="mt-2 text-sm opacity-90">
+                {
+                  /* <p className="mt-2 text-sm opacity-90">
                   ≈ {macroTargets.carbs.kcal.toLocaleString("th-TH")} kcal •{" "}
                   {macroTargets.carbs.ratio}%
-                </p>
+                </p> */
+                  <div className="flex items-center gap-2 text-[13px]">
+                    <MdBakeryDining size={20} />
+                    <span className="font-medium">Daily target</span>
+                    <span className="font-medium">
+                      {macroTargets.carbs.grams} g
+                    </span>
+                  </div>
+                }
               </div>
 
               {/* Fat */}
@@ -769,18 +829,23 @@ export const MainContent = () => {
                 <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
                   Fat
                 </h3>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-none tracking-tight">
-                    {macroTargets.fat.grams}
-                  </span>
-                  <span className="text-xl md:text-2xl font-semibold opacity-90">
-                    g
+                <h3 className="text-[13px] font-semibold">Consumed today</h3>
+                <div className="mt-2 flex items-baseline gap-2 pb-2">
+                  <span className="text-3xl sm:text-4xl font-extrabold leading-none tracking-tight">
+                    {fmtG(todayMacros.fat)}
                   </span>
                 </div>
-                <p className="mt-2 text-sm opacity-90">
+                {/* <p className="mt-2 text-sm opacity-90">
                   ≈ {macroTargets.fat.kcal.toLocaleString("th-TH")} kcal •{" "}
                   {macroTargets.fat.ratio}%
-                </p>
+                </p> */}
+                <div className="flex items-center gap-2 text-[13px]">
+                  <FaTint />
+                  <span className="font-medium">Daily target</span>
+                  <span className="font-medium">
+                    {macroTargets.fat.grams} g
+                  </span>
+                </div>
               </div>
             </div>
           </section>
