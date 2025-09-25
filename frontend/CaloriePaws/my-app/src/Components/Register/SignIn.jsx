@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { MdOutlineLogin } from "react-icons/md";
 import { Link, useNavigate } from 'react-router-dom';
+import { MdEmail } from "react-icons/md";
 import imageLog from '../../assets/images/Subtract.png'
 import { FaUser } from "react-icons/fa";
 import { IoMdLock } from "react-icons/io";
@@ -61,14 +62,14 @@ const handleSignIn = async () => {
                 <div className='flex rounded-full p-3 shadow-lg border-[0.5px] border-[#e4e4e4]'>
                     <MdOutlineLogin size={30} />
                 </div>
-                <h1 className='font-Medi text-5xl'>Welcome Back</h1>
-                <p className='text-center text-[13px] text-[#929292] font-light'>Upload a meal photo or log foods get instant calories, protein, carbs, and fat. Adjust portions, see what’s left for today, and keep your goals on track.</p>
+                <h1 className='font-Medi text-4xl lg:text-5xl text-center'>Welcome Back</h1>
+                <p className='text-center text-[10px] lg:text-[13px] text-[#929292] font-light'>Upload a meal photo or log foods get instant calories, protein, carbs, and fat. Adjust portions, see what’s left for today, and keep your goals on track.</p>
                 <div className='flex flex-col w-full gap-5 px-4 pt-5'>
                     <div className='relative w-full'>
-                        <FaUser size={10} className='absolute left-6 top-1/2 transform -translate-y-1/2 text-[#696969]'/>
+                        <MdEmail size={13} className='absolute left-6 top-1/2 transform -translate-y-1/2 text-[#696969]'/>
                         <input 
                         type="text"
-                        placeholder='User Name'
+                        placeholder='Email'
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         className='w-full shadow-sm rounded-full py-3 px-13 outline-none border-[0.5px] border-[#e8e8e8] text-sm' 

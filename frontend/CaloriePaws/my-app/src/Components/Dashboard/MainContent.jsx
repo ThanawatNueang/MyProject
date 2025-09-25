@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   BarChart,
@@ -14,13 +14,25 @@ import {
 import { fetchEatingSummary, nutritionGoal } from "../API/nutritionGoal.js";
 import { userPreviewRaw, userPreview } from "../API/user";
 import { TbMenu3 } from "react-icons/tb";
+import { FaUserEdit } from "react-icons/fa";
 import { IoHome, IoFastFoodSharp } from "react-icons/io5";
 import { RiFolderUploadFill, RiDashboardFill } from "react-icons/ri";
-import { MdFoodBank, MdOutlineLogout } from "react-icons/md";
+import { MdOutlineLogout } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
+import { logoutUser } from "../API/auth";
 import { eatingHistory } from "../API/eatingHistory.js";
+import { BsFire } from "react-icons/bs";
+import {
+  TbTargetArrow,
+  TbArrowDownRight,
+  TbArrowUpRight,
+  TbCheck,
+  TbChevronRight,
+} from "react-icons/tb";
 
 const backendURL = "https://caloriepaws-node.azurewebsites.net"
 const LS_CURRENT_WEIGHT = "ui:weightCurrent";
+
 
 // ===== config สี & เกณฑ์ =====
 const COLORS = {
@@ -31,7 +43,14 @@ const COLORS = {
 };
 const LOW_RATIO = 0.3; // <30% ของ goal = น้อยเกินไป
 
-// ===== helpers =====
+// ===== helpers ===== แก้ด้วย
+const pickNumber = (...vals) => {
+  for (const v of vals) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return null;
+};
 const fmtKcal = (n) => `${Number(n || 0).toLocaleString("th-TH")} kcal`;
 const toYMD = (v) =>
   typeof v === "string"
@@ -43,8 +62,12 @@ const CaloriesTooltip = ({ active, payload, label, goal }) => {
   if (!active || !payload?.length) return null;
   const full = payload?.[0]?.payload ?? {};
   const actual = Number(full.actual || 0);
-  const status = full.status; // "low" | "ok" | "over"
+  const g = Number(goal || 0);
 
+  const over = Math.max(0, actual - g);
+  const remaining = Math.max(0, g - actual);
+
+  const status = full.status; // "low" | "ok" | "over"
   const statusText =
     status === "low"
       ? "Not eating enough"
@@ -66,14 +89,24 @@ const CaloriesTooltip = ({ active, payload, label, goal }) => {
         />
         {label}
       </div>
+
       <div className="flex justify-between">
         <span>Actual</span>
         <span className="font-semibold">{fmtKcal(actual)}</span>
       </div>
       <div className="flex justify-between">
         <span>Goal</span>
-        <span>{fmtKcal(goal)}</span>
+        <span>{fmtKcal(g)}</span>
       </div>
+
+      {/* NEW: Remaining / Over by */}
+      <div className="flex justify-between mt-1 ">
+        <span>{over > 0 ? "Over by" : "Remaining"}</span>
+        <span className="font-semibold" style={{ color: dotColor }}>
+          {fmtKcal(over > 0 ? over : remaining)}
+        </span>
+      </div>
+
       <div className="mt-2 text-xs" style={{ color: dotColor }}>
         {statusText}
       </div>
@@ -95,6 +128,32 @@ export const MainContent = () => {
   const [weightInput, setWeightInput] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef(null);
+
+  const navigate = useNavigate();
+
+  const handleLogout = async (e) => {
+    e?.preventDefault?.();
+
+    try {
+      await logoutUser(); // ล็อกเอาต์ฝั่งเซิร์ฟเวอร์ (ล้มเหลวก็ยังเคลียร์ฝั่ง client ต่อ)
+    } catch {}
+
+    try {
+      // เคลียร์ session ฝั่ง client
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("profileImageURL");
+      sessionStorage.removeItem("session:userFetched");
+
+      // แจ้งคอมโพเนนต์อื่น ๆ ให้รีเซ็ตสถานะ
+      window.dispatchEvent(new Event("auth:logout"));
+    } finally {
+      // ปิดเมนูมือถือ + กลับหน้าแรก + รีโหลดเพื่อเคลียร์ in-memory state
+      setIsMenuOpen(false);
+      navigate("/", { replace: true });
+      setTimeout(() => window.location.reload(), 0);
+    }
+  };
 
   // น้ำหนักจริง
   const realWeight =
@@ -153,6 +212,86 @@ export const MainContent = () => {
     })();
   }, []);
 
+  const macroTargets = useMemo(() => {
+    const goal = Number(caloriesDaily?.dailyCalorieGoal ?? 0);
+    if (!goal) return null;
+
+    const getRatio = (r, def) => {
+      let v = Number(r);
+      if (!Number.isFinite(v)) v = def;
+      if (v > 1) v = v / 100; // รองรับ percent เช่น 30 -> 0.3
+      return Math.max(0, Math.min(1, v));
+    };
+
+    // 1) ลองใช้ "กรัมต่อวัน" จาก API ถ้ามี
+    const pG_api = pickNumber(
+      caloriesDaily?.dailyProteinGoal,
+      caloriesDaily?.proteinGoal,
+      caloriesDaily?.protein_grams
+    );
+    const cG_api = pickNumber(
+      caloriesDaily?.dailyCarbGoal,
+      caloriesDaily?.carbGoal,
+      caloriesDaily?.carb_grams
+    );
+    const fG_api = pickNumber(
+      caloriesDaily?.dailyFatGoal,
+      caloriesDaily?.fatGoal,
+      caloriesDaily?.fat_grams
+    );
+
+    // 2) ถ้าไม่มีกรัม ให้คำนวณจากสัดส่วน
+    let pR = getRatio(
+      caloriesDaily?.macroRatio?.protein ??
+        caloriesDaily?.proteinRatio ??
+        caloriesDaily?.proteinPercent,
+      0.3 // default 30%
+    );
+    let cR = getRatio(
+      caloriesDaily?.macroRatio?.carbs ??
+        caloriesDaily?.carbRatio ??
+        caloriesDaily?.carbPercent,
+      0.4 // default 40%
+    );
+    let fR = getRatio(
+      caloriesDaily?.macroRatio?.fat ??
+        caloriesDaily?.fatRatio ??
+        caloriesDaily?.fatPercent,
+      0.3 // default 30%
+    );
+
+    // normalize เผื่อรวมไม่เท่ากับ 1
+    const sum = pR + cR + fR;
+    if (sum > 0) {
+      pR /= sum;
+      cR /= sum;
+      fR /= sum;
+    }
+
+    const proteinG = Math.round(pG_api ?? (goal * pR) / 4);
+    const carbsG = Math.round(cG_api ?? (goal * cR) / 4);
+    const fatG = Math.round(fG_api ?? (goal * fR) / 9);
+
+    return {
+      goal,
+      protein: {
+        grams: proteinG,
+        kcal: proteinG * 4,
+        ratio: Math.round(((proteinG * 4) / goal) * 100),
+      },
+      carbs: {
+        grams: carbsG,
+        kcal: carbsG * 4,
+        ratio: Math.round(((carbsG * 4) / goal) * 100),
+      },
+      fat: {
+        grams: fatG,
+        kcal: fatG * 9,
+        ratio: Math.round(((fatG * 9) / goal) * 100),
+      },
+    };
+  }, [caloriesDaily]);
+
   // สรุปวันนี้
   useEffect(() => {
     (async () => {
@@ -202,6 +341,33 @@ export const MainContent = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [realWeight]);
+
+  // ===== Goal helpers (แสดงสถานะบน Dashboard) =====
+  const goalLabel =
+    bodyGoal === "lose"
+      ? "Lose weight"
+      : bodyGoal === "gain"
+      ? "Gain weight"
+      : bodyGoal === "maintain"
+      ? "Maintain weight"
+      : "—";
+
+  const hasTarget =
+    bodyGoal !== "maintain" && Number.isFinite(Number(goalWeight));
+
+  const remainingKg = (() => {
+    const cur = Number(realWeight);
+    const target = Number(goalWeight);
+    if (!hasTarget || !Number.isFinite(cur)) return null;
+    // เหลืออีกเท่าไรถึงเป้าหมาย (lose = current - target, gain = target - current)
+    const left =
+      bodyGoal === "lose"
+        ? cur - target
+        : bodyGoal === "gain"
+        ? target - cur
+        : 0;
+    return Math.max(0, Math.round(left * 10) / 10);
+  })();
 
   // ✅ ประกาศ refreshGraph ไว้ "ก่อน" ทุก useEffect ที่จะใช้มัน (กัน TDZ)
   const refreshGraph = useCallback(async () => {
@@ -320,16 +486,39 @@ export const MainContent = () => {
       icon: <RiDashboardFill size={20} />,
       href: "/dashboard",
     },
-    { label: "Nutrition", icon: <IoFastFoodSharp size={20} />, href: "/" },
     {
       label: "Profile Settings",
-      icon: <MdFoodBank size={20} />,
+      icon: <FaUserEdit size={20} />,
       href: "/edit",
+    },
+    {
+      label: "Nutrition",
+      icon: <IoFastFoodSharp size={20} />,
+      href: "/#food-search-section",
     },
   ];
 
+  //เพิ่มโค้ดนี้
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [isMenuOpen]);
+
   return (
-    <div className="flex flex-col w-full min-w-0">
+    <div className="flex flex-col w-full min-w-0 px-4 sm:px-6 lg:px-8 overflow-x-hidden max-w-screen-2xl mx-auto">
       <div className="flex items-center gap-8">
         <div
           className="lg:hidden text-3xl cursor-pointer relative z-[160]"
@@ -338,45 +527,264 @@ export const MainContent = () => {
           <TbMenu3 className={isMenuOpen ? "text-white" : "text-black"} />
         </div>
         <div className="font-cocoPro">
-          <h1 className="text-[20px]">Dashboard</h1>
-          <p className="text-[15px] text-[#9F9F9F]">nutrition Updates</p>
+          <h1 className="text-lg sm:text-xl lg:text-2xl">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-[#9F9F9F]">nutrition Updates</p>
         </div>
       </div>
 
       {/* cards */}
-      <section className="pt-8 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-7">
-          <div className="flex flex-col gap-3 justify-center px-6 lg:px-8 bg-[#C0B275] h-45 text-[#2C2C2C] rounded-4xl">
-            <p className="poppins-semibold text-lg lg:text-2xl">
-              Calories Today
-            </p>
-            <p className="text-[26px] xl:text-[25px] poppins-semibold">
-              {summaryCalories?.calories ?? "Loading..."} Kcal
-            </p>
-            <div className="flex items-center gap-2">
-              <p className="poppins-semibold text-md">Goal</p>
-              <p className="poppins-semibold text-sm">
-                {caloriesDaily?.dailyCalorieGoal ?? "Loading..."} Kcal
-              </p>
-            </div>
-          </div>
+      <section className="pt-6 w-full">
+        <div className="grid [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))] gap-4 lg:gap-6">
+          {(() => {
+            const today = Number(summaryCalories?.calories ?? 0);
+            const goal = Number(caloriesDaily?.dailyCalorieGoal ?? 0);
+            const over = Math.max(0, today - goal);
+            const remaining = Math.max(0, goal - today);
+            const ratio = goal > 0 ? today / goal : 0;
 
-          <div className="flex flex-col gap-2 justify-center px-6 lg:px-8 bg-[#909C6F] text-[#2C2C2C] h-45 rounded-4xl">
-            <p className="poppins-semibold text-lg lg:text-2xl">Weight</p>
-            <p className="text-[26px] lg:text-[25px] poppins-semibold">
-              {realWeight != null ? `${realWeight} Kg` : "Loading..."}
-            </p>
-            {/* ✅ แสดง Goal เฉพาะเมื่อไม่ใช่ maintain */}
+            const status = !goal
+              ? "—"
+              : over > 0
+              ? "Over target"
+              : ratio < 0.3
+              ? "Not enough"
+              : "On track";
+
+            const chipCls = !goal
+              ? "bg-black"
+              : over > 0
+              ? "bg-red-600"
+              : ratio < 0.3
+              ? "bg-black"
+              : "bg-emerald-600";
+
+            const fmt = (n) => `${Number(n || 0).toLocaleString("th-TH")} kcal`;
+
+            return (
+              <div
+                className="relative min-w-0 overflow-hidden rounded-3xl sm:rounded-4xl p-5 sm:p-6 lg:p-7 text-black
+                    bg-[linear-gradient(135deg,#CEBF8A_0%,#B59F64_100%)]
+                    shadow-[0_12px_28px_rgba(0,0,0,0.12)]"
+              >
+                {/* ไฮไลต์เบา ๆ */}
+                <div className="pointer-events-none absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/15 blur-2xl" />
+
+                {/* Header + chip */}
+                <div className="flex items-start justify-between">
+                  <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
+                    Calories Today
+                  </h3>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-white text-[10px] sm:text-xs font-medium ${chipCls}`}
+                  >
+                    {over > 0 ? (
+                      <TbArrowUpRight size={14} />
+                    ) : (
+                      <BsFire size={12} />
+                    )}
+                    {status}
+                  </span>
+                </div>
+
+                {/* Current kcal */}
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-none tracking-tight">
+                    {summaryCalories?.calories ?? "Loading..."}
+                  </span>
+                  <span className="text-xl md:text-2xl font-semibold opacity-90">
+                    kcal
+                  </span>
+                </div>
+
+                {/* Goal + remaining/over */}
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <span className="inline-flex items-center gap-1.5 opacity-95">
+                    <BsFire className="shrink-0" />
+                    <span className="font-semibold">Goal</span>
+                    <span className="font-medium">
+                      {goal ? goal.toLocaleString("th-TH") : "—"} kcal
+                    </span>
+                  </span>
+                  <div className="mt-2 text-xs sm:text-sm">
+                    {over > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full py-1 text-sm font-semibold text-black">
+                        <TbArrowUpRight size={14} />
+                        Over by {fmt(Math.abs(over))}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full py-1 text-[12px] font-semibold text-black">
+                        <TbArrowDownRight size={14} />
+                        Remaining {fmt(remaining)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+          <div
+            className="relative overflow-hidden rounded-3xl sm:rounded-4xl p-5 sm:p-6 lg:p-7 text-black
+                bg-[linear-gradient(135deg,#9AA87A_0%,#7E8B63_100%)]
+                shadow-[0_12px_28px_rgba(0,0,0,0.12)]"
+          >
+            {/* ไฮไลต์เบา ๆ ด้านมุมขวา */}
+            <div className="pointer-events-none absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+
+            {/* Header row */}
+            <div className="flex items-start justify-between">
+              <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
+                Weight
+              </h3>
+              <span
+                className={`inline-flex items-center gap-1.5 text-white rounded-full px-3 py-1 text-xs font-medium
+                  ${
+                    bodyGoal === "maintain"
+                      ? "bg-black"
+                      : bodyGoal === "lose"
+                      ? "bg-black"
+                      : "bg-black"
+                  }`}
+              >
+                {bodyGoal === "lose" ? (
+                  <TbArrowDownRight size={14} />
+                ) : bodyGoal === "gain" ? (
+                  <TbArrowUpRight size={14} />
+                ) : (
+                  <TbTargetArrow size={14} />
+                )}
+                {goalLabel}
+              </span>
+            </div>
+
+            {/* Current weight */}
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-4xl md:text-5xl font-extrabold leading-none tracking-tight">
+                {realWeight ?? "—"}
+              </span>
+              <span className="text-xl md:text-2xl font-semibold opacity-90">
+                kg
+              </span>
+            </div>
+
+            {/* Target / remaining */}
             {bodyGoal !== "maintain" && (
-              <div className="flex items-center gap-2">
-                <p className="poppins-semibold text-md">Goal</p>
-                <p className="poppins-semibold text-sm">
-                  {goalWeight != null ? `${goalWeight} kg` : "—"}
-                </p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span className="inline-flex items-center gap-1.5 opacity-95">
+                  <TbTargetArrow className="shrink-0" />
+                  <span className="font-semibold">Target</span>
+                  <span className="font-medium">{goalWeight ?? "—"} kg</span>
+                </span>
+
+                {hasTarget && remainingKg != null && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 ${
+                      remainingKg > 0 ? "opacity-95" : "text-black"
+                    }`}
+                  >
+                    <span className="mx-1">•</span>
+                    {remainingKg > 0 ? (
+                      <span className="font-medium">
+                        {remainingKg} kg to go
+                      </span>
+                    ) : (
+                      <>
+                        <TbCheck className="shrink-0" />
+                        <span className="font-medium">Reached</span>
+                      </>
+                    )}
+                  </span>
+                )}
               </div>
             )}
+
+            {/* CTA */}
+            <a
+              href="/edit"
+              className="group mt-4 inline-flex items-center gap-1 text-sm font-medium text-black"
+            >
+              Adjust goal
+              <TbChevronRight className="transition-transform group-hover:translate-x-0.5" />
+            </a>
           </div>
         </div>
+        {macroTargets && (
+          <section className="pt-5 lg:pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+              {/* Protein */}
+              <div
+                className="relative min-w-0 overflow-hidden rounded-3xl sm:rounded-4xl p-5 sm:p-6 lg:p-7 text-black
+        bg-[linear-gradient(135deg,#B8C6D9_0%,#8FA4BC_100%)]
+        shadow-[0_12px_28px_rgba(0,0,0,0.12)]"
+              >
+                <div className="pointer-events-none absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/20 blur-2xl" />
+                <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
+                  Protein
+                </h3>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-none tracking-tight">
+                    {macroTargets.protein.grams}
+                  </span>
+                  <span className="text-xl md:text-2xl font-semibold opacity-90">
+                    g
+                  </span>
+                </div>
+                <p className="mt-2 text-sm opacity-90">
+                  ≈ {macroTargets.protein.kcal.toLocaleString("th-TH")} kcal •{" "}
+                  {macroTargets.protein.ratio}%
+                </p>
+              </div>
+
+              {/* Carbs */}
+              <div
+                className="relative min-w-0 overflow-hidden rounded-3xl sm:rounded-4xl p-5 sm:p-6 lg:p-7 text-black
+        bg-[linear-gradient(135deg,#E5D9B8_0%,#CDBB8B_100%)]
+        shadow-[0_12px_28px_rgba(0,0,0,0.12)]"
+              >
+                <div className="pointer-events-none absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/20 blur-2xl" />
+                <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
+                  Carbs
+                </h3>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-none tracking-tight">
+                    {macroTargets.carbs.grams}
+                  </span>
+                  <span className="text-xl md:text-2xl font-semibold opacity-90">
+                    g
+                  </span>
+                </div>
+                <p className="mt-2 text-sm opacity-90">
+                  ≈ {macroTargets.carbs.kcal.toLocaleString("th-TH")} kcal •{" "}
+                  {macroTargets.carbs.ratio}%
+                </p>
+              </div>
+
+              {/* Fat */}
+              <div
+                className="relative overflow-hidden rounded-3xl sm:rounded-4xl p-5 sm:p-6 lg:p-7 text-black
+  bg-[linear-gradient(135deg,#D7BBB6_0%,#B48880_100%)]
+  shadow-[0_12px_28px_rgba(0,0,0,0.12)]
+  md:col-span-2 xl:col-span-1"
+              >
+                <div className="pointer-events-none absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/18 blur-2xl" />
+                <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
+                  Fat
+                </h3>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-extrabold leading-none tracking-tight">
+                    {macroTargets.fat.grams}
+                  </span>
+                  <span className="text-xl md:text-2xl font-semibold opacity-90">
+                    g
+                  </span>
+                </div>
+                <p className="mt-2 text-sm opacity-90">
+                  ≈ {macroTargets.fat.kcal.toLocaleString("th-TH")} kcal •{" "}
+                  {macroTargets.fat.ratio}%
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
       </section>
 
       {/* ===== Chart ===== */}
@@ -502,50 +910,75 @@ export const MainContent = () => {
         </div>
       </section>
 
-      {/* Mobile overlay menu */}
+      {/* Mobile overlay menu (no scroll) */}
       <div
-        className={`lg:hidden fixed inset-0 z-[150] bg-[#2C2C2C] text-white transform transition-all duration-500 ${
-          isMenuOpen
-            ? "translate-x-0 opacity-100"
-            : "-translate-x-full opacity-0 pointer-events-none"
-        }`}
+        className={`lg:hidden fixed inset-0 z-[150] bg-[#2C2C2C] text-white transition-all duration-500
+    ${
+      isMenuOpen
+        ? "translate-x-0 opacity-100"
+        : "-translate-x-full opacity-0 pointer-events-none"
+    }
+  h-dvh overflow-hidden overscroll-none`} // สำคัญ!
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile menu"
       >
-        <div className="flex flex-col gap-7 items-center pt-24 pb-10">
-          <Link to="/" className="text-3xl font-prompt">
-            Calorie Paws
-          </Link>
-          {profileImage ? (
-            <img
-              src={profileImage}
-              className="rounded-full border w-32 h-32 object-cover"
-              alt=""
-            />
-          ) : (
-            <div className="rounded-full border w-32 h-32 bg-white/10" />
-          )}
-          <div className="text-center">
-            <p className="font-light text-[13px]">Welcome Back</p>
-            <h1 className="font-cocoPro text-xl">
-              {userData?.user?.name ?? "Loading..."}
-            </h1>
+        <div className="mx-auto w-full max-w-md h-full flex flex-col">
+          {/* profile: ย่อให้พอดีจอเล็ก */}
+          <div className="px-4 pt-30 pb-4 flex flex-col items-center gap-4">
+            {profileImage ? (
+              <img
+                src={profileImage}
+                className="rounded-full border w-25 h-24 sm:w-24 sm:h-24 object-cover"
+                alt=""
+              />
+            ) : (
+              <div className="rounded-full border w-16 h-16 sm:w-24 sm:h-24 bg-white/10" />
+            )}
+            <div className="text-center leading-tight">
+              <p className="font-light text-[11px] sm:text-[12px]">
+                Welcome Back
+              </p>
+              <h1 className="font-cocoPro text-base sm:text-lg">
+                {userData?.user?.name ?? "Loading..."}
+              </h1>
+            </div>
+          </div>
+
+          {/* nav: กินพื้นที่กลางพอดี ไม่สกอร์ */}
+          <nav className="px-3 sm:px-6 flex-1">
+            <ul className="grid grid-cols-1 gap-3">
+              {menuList.slice(0, 5).map((it, i) => (
+                <li key={i}>
+                  <Link
+                    to={it.href}
+                    className="flex items-center gap-3 sm:gap-4 px-3 py-2 sm:px-5 sm:py-3 rounded-lg hover:bg-white/10 leading-none"
+                  >
+                    {it.icon}
+                    <span className="text-[14px] sm:text-[15px]">
+                      {it.label}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* sign out: ชิดล่าง + กัน safe area */}
+          <div className="px-3 sm:px-6 pb-[max(12px,env(safe-area-inset-bottom))]">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 sm:gap-4 px-3 py-2 sm:px-5 sm:py-3 rounded-lg hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30 leading-none"
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <MdOutlineLogout size={23} />
+              <span className="text-[14px] sm:text-[15px]">Sign out</span>
+            </button>
           </div>
         </div>
-        <nav>
-          {menuList.slice(0, 4).map((it, i) => (
-            <Link
-              key={i}
-              to={it.href}
-              className="flex items-center gap-5 px-8 py-4 hover:bg-white hover:text-black"
-            >
-              {it.icon} <span>{it.label}</span>
-            </Link>
-          ))}
-        </nav>
-        <div className="px-8 py-8 flex items-center gap-4">
-          <MdOutlineLogout size={23} /> <span>Sign out</span>
-        </div>
       </div>
-
       {/* Modal: Edit Weight current (UI only) */}
       {editOpen && (
         <div

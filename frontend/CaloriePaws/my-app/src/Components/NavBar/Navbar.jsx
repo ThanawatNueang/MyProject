@@ -1,11 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
 import { TbMenu3 } from "react-icons/tb";
 import { UserMenu } from "./UserMenu";
-import { MdOutlineLanguage } from "react-icons/md";
 import { useEffect, useState } from "react";
 import { userPreview } from "../API/user";
 import { nutritionGoal } from "../API/nutritionGoal";
-import { fetchEatingSummary} from "../API/nutritionGoal.js";
+import { fetchEatingSummary } from "../API/nutritionGoal.js";
 
 export const Navbar = () => {
   const [name, setName] = useState("");
@@ -28,11 +27,14 @@ export const Navbar = () => {
     "/editProfile",
   ];
 
-  // helper
   const syncNameFromLS = () => {
     const token = localStorage.getItem("userToken");
     const storedUser = JSON.parse(localStorage.getItem("user") || "null");
-    setName(token && (storedUser?.name || storedUser?.username) ? (storedUser.name || storedUser.username) : "");
+    setName(
+      token && (storedUser?.name || storedUser?.username)
+        ? storedUser.name || storedUser.username
+        : ""
+    );
   };
 
   const fetchNutritionIfAuthed = async () => {
@@ -52,17 +54,15 @@ export const Navbar = () => {
     }
   };
 
-    useEffect(() => {
+  useEffect(() => {
     (async () => {
       try {
         const data = await fetchEatingSummary();
-        console.log(data);
         setSummaryCalories(data?.calories ?? null);
       } catch {}
     })();
   }, []);
 
-  // ตั้งค่าจาก LS ทันทีเมื่อเข้ามา
   useEffect(() => {
     syncNameFromLS();
     const hasToken = !!localStorage.getItem("userToken");
@@ -70,7 +70,6 @@ export const Navbar = () => {
     if (hasToken) fetchNutritionIfAuthed();
   }, []);
 
-  // (ถ้าจำเป็น) ดึงชื่อจาก backend เมื่อมี token
   useEffect(() => {
     const token = localStorage.getItem("userToken");
     if (!token) {
@@ -81,7 +80,8 @@ export const Navbar = () => {
     (async () => {
       try {
         const ud = await userPreview();
-        if (ud?.user?.name || ud?.user?.username) setName(ud.user.name || ud.user.username);
+        if (ud?.user?.name || ud?.user?.username)
+          setName(ud.user.name || ud.user.username);
         setShowCalories(true);
       } catch {
         setShowCalories(false);
@@ -90,7 +90,6 @@ export const Navbar = () => {
     })();
   }, []);
 
-  // ฟังอีเวนต์ login/logout/profile:updated + storage (ข้ามแท็บ) ให้เด้งชื่อ/แคลฯ ทันที
   useEffect(() => {
     const onLogin = async () => {
       syncNameFromLS();
@@ -103,19 +102,15 @@ export const Navbar = () => {
       setShowCalories(false);
     };
 
-    // อัปเดตชื่อทันทีหลังแก้ไขโปรไฟล์
     const onProfileUpdated = (e) => {
-      // ถ้า UserMenu ส่ง CustomEvent พร้อม detail.name มาก็ใช้เลย
       const newName = e?.detail?.name;
       if (typeof newName === "string" && newName.trim()) {
         setName(newName);
       } else {
-        // ไม่งั้นอ่านจาก localStorage (UserMenu เขียนค่าใหม่ไว้แล้ว)
         syncNameFromLS();
       }
     };
 
-    // เปลี่ยนค่าใน localStorage จากอีกแท็บ/หน้าต่าง
     const onStorage = (e) => {
       if (e.key === "user" || e.key === "userToken") {
         syncNameFromLS();
@@ -123,9 +118,7 @@ export const Navbar = () => {
         setShowCalories(hasToken);
         if (e.key === "userToken") {
           if (hasToken) fetchNutritionIfAuthed();
-          else {
-            setCalories(null);
-          }
+          else setCalories(null);
         }
       }
     };
@@ -143,18 +136,11 @@ export const Navbar = () => {
     };
   }, []);
 
-  // รีเช็คเมื่อเปลี่ยน route (กันบางเคส)
   useEffect(() => {
     syncNameFromLS();
     setShowCalories(!!localStorage.getItem("userToken"));
   }, [location.pathname]);
 
-  // ปิด scroll เมื่อเมนูเปิด
-  useEffect(() => {
-    document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
-  }, [isMenuOpen]);
-
-  // ดึงโภชนาการครั้งแรกเฉพาะตอนมี token
   useEffect(() => {
     fetchNutritionIfAuthed();
   }, []);
@@ -162,10 +148,15 @@ export const Navbar = () => {
   if (hideNavbarParths.includes(location.pathname)) return null;
 
   return (
-    <div className="bg-white relative">
-      <div className="container flex justify-between items-center pt-10 py-6">
-        <div className="flex flex-col">
-          <Link to="/" className="text-xl lg:text-3xl font-prompt cursor-pointer">
+    <div className="bg-white relative pt-2">
+      {/* แถวบน: ใช้ container ที่ยืดหยุ่นขึ้น + ระยะขอบ responsive */}
+      <div className="container mx-auto flex justify-between items-center px-3 sm:px-6 lg:px-8 pt-4 md:pt-6 pb-3 md:pb-4">
+        {/* โลโก้ + tagline */}
+        <div className="flex flex-col min-w-0">
+          <Link
+            to="/"
+            className="text-lg sm:text-xl lg:text-3xl font-prompt cursor-pointer leading-tight"
+          >
             Calorie
             <span className="relative inline-block">
               <div className="oval oval1 absolute"></div>
@@ -176,22 +167,28 @@ export const Navbar = () => {
               Paws
             </span>
           </Link>
-          <p className="font-inter text-[#7B7B7B] text-[10px] lg:text[12px]">Search and Upload</p>
+          <p className="font-inter text-[#7B7B7B] text-[10px] sm:text-[11px] lg:text-[12px]">
+            Search and Upload
+          </p>
         </div>
 
-        <ul className="hidden lg:flex gap-[60px] border-[0.3px] rounded-full px-12 py-2 font-prompt bg-[#f6f6f6]">
+        {/* เมนูใหญ่ (desktop) */}
+        <ul className="hidden lg:flex gap-6 xl:gap-10 border-[0.3px] rounded-full px-6 xl:px-12 py-2 font-prompt bg-[#f6f6f6] text-sm xl:text-base">
           <li>
-            <Link to="/" className="border-r-[0.5px] pr-[30px]">
+            <Link to="/" className="border-r-[0.5px] pr-4 xl:pr-[30px]">
               Home
             </Link>
           </li>
           <li>
-            <Link to="/upload" className="border-r-[0.5px] pr-[30px]">
+            <Link to="/upload" className="border-r-[0.5px] pr-4 xl:pr-[30px]">
               Upload
             </Link>
           </li>
           <li>
-            <Link to="/dashboard" className="border-r-[0.5px] pr-[30px]">
+            <Link
+              to="/dashboard"
+              className="border-r-[0.5px] pr-4 xl:pr-[30px]"
+            >
               Dashboard
             </Link>
           </li>
@@ -200,54 +197,87 @@ export const Navbar = () => {
           </li>
         </ul>
 
-        <div className="lg:hidden text-3xl cursor-pointer z-[101]" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        {/* ปุ่มเมนู (mobile) */}
+        <button
+          type="button"
+          className="lg:hidden text-2xl sm:text-3xl p-2 -mr-1 cursor-pointer z-[101]"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          aria-label="Toggle menu"
+        >
           <TbMenu3 />
-        </div>
+        </button>
 
-        <div className="text-end">
-          <p className="text-sm lg:text-2xl font-prompt">{showCalories ? "Calories Today" : "Track Calories"}</p>
-          <p className="font-inter text-[#c0b275] text-[10px] lg:text-[12px]">
+        {/* Calories */}
+        <div className="text-right min-w-0">
+          <p className="text-xs sm:text-sm lg:text-2xl font-prompt truncate">
+            {showCalories ? "Calories Today" : "Track Calories"}
+          </p>
+          <p className="font-inter text-[#c0b275] text-[10px] sm:text-[11px] lg:text-[12px]">
             {showCalories && calories != null ? `${summaryCalories} Kcal` : "(Sign In)"}
           </p>
         </div>
       </div>
 
-      <div className="border-b border-[#cfcfcf]"></div>
+      <div className="border-b pb-2 border-[#cfcfcf]" />
 
-      <div className="container py-6 sm:py-8 text-xl sm:text-2xl md:text-3xl">
-        <div className="flex justify-between items-center">
-          <p className="font-prompt px-2 sm:px-8">Welcome, {name || "Guest"}</p>
-          <div className="flex gap-4 sm:gap-6 md:gap-5 items-center pr-2 sm:pr-8">
+      {/* แถวล่าง: welcome + user menu */}
+      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8 text-lg sm:text-2xl md:text-3xl">
+        <div className="flex justify-between items-center gap-3">
+          <p className="font-prompt px-2 sm:px-4 md:px-6 truncate">
+            Welcome, {name || "Guest"}
+          </p>
+          <div className="flex items-center gap-3 sm:gap-5 md:gap-6 pr-2 sm:pr-4 md:pr-6">
             <UserMenu />
-            {/* <MdOutlineLanguage className="bg-[#C0B275] text-white p-2 rounded-full text-3xl sm:text-4xl cursor-pointer" /> */}
           </div>
         </div>
       </div>
 
+      {/* Mobile Drawer: ปรับ top ให้เหมาะกับสูงแถบด้านบนในแต่ละ breakpoint */}
       <div
-        className={`lg:hidden fixed top-[120px] left-0 w-full h-full bg-white shadow-md z-[100]
-        transform transition-all duration-600 ease-in-out
-        ${isMenuOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
+        className={`lg:hidden fixed left-0 w-full h-screen bg-white shadow-md z-[100]
+        transform transition-transform duration-300 ease-in-out
+        top-[64px] sm:top-[72px] md:top-[80px]
+        ${
+          isMenuOpen
+            ? "translate-x-0 opacity-100"
+            : "-translate-x-full opacity-0 pointer-events-none"
+        }`}
       >
-        <ul className="flex-col h-full items-center pt-30 font-prompt text-lg">
-          <li className="w-full text-center">
-            <Link to="/" className="block w-full text-[20px] py-10" onClick={() => setIsMenuOpen(false)}>
+        <ul className="flex flex-col h-full justify-center items-center font-prompt text-xl sm:text-lg space-y-10 sm:space-y-6 px-4">
+          <li className="w-full max-w-md text-center">
+            <Link
+              to="/"
+              className="block w-full py-4 rounded-lg hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 transition"
+              onClick={() => setIsMenuOpen(false)}
+            >
               Home
             </Link>
           </li>
-          <li className="w-full text-center">
-            <Link to="/upload" className="block w-full text-[20px] py-10" onClick={() => setIsMenuOpen(false)}>
+          <li className="w-full max-w-md text-center">
+            <Link
+              to="/upload"
+              className="block w-full py-4 rounded-lg hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 transition"
+              onClick={() => setIsMenuOpen(false)}
+            >
               Upload
             </Link>
           </li>
-          <li className="w-full text-center">
-            <Link to="/dashboard" className="block w-full text-[20px] py-10" onClick={() => setIsMenuOpen(false)}>
+          <li className="w-full max-w-md text-center">
+            <Link
+              to="/dashboard"
+              className="block w-full py-4 rounded-lg hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 transition"
+              onClick={() => setIsMenuOpen(false)}
+            >
               Dashboard
             </Link>
           </li>
-          <li className="w-full text-center">
-            <Link to="/edit" className="block w-full text-[20px] py-10" onClick={() => setIsMenuOpen(false)}>
-              Edit
+          <li className="w-full max-w-md text-center">
+            <Link
+              to="/edit"
+              className="block w-full py-4 rounded-lg hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 transition"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Profile Settings
             </Link>
           </li>
         </ul>

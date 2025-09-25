@@ -116,10 +116,8 @@ export const SearchBar = ({ beforeText, defaultQuery = "", onResults }) => {
         <h1 className="text-2xl sm:text-5xl font-coco pb-5 lg:pb-10">
           {beforeText}
         </h1>
-        <p className="font-Ul text-[9px] lg:text-lg pb-6 lg:pb-10 text-[#686868]">
-          Search and learn about calories, protein, carbohydrates,
-          <br />
-          and nutrients in the foods you love.
+        <p className="font-Ul text-[11px] lg:text-lg pb-6 lg:pb-10 text-[#686868]">
+          Search and learn about calories, protein, carbohydrates,and nutrients in the foods you love.
         </p>
       </div>
 
@@ -140,7 +138,7 @@ export const SearchBar = ({ beforeText, defaultQuery = "", onResults }) => {
                 debounceRef.current = setTimeout(() => fetchSuggest(v), 220);
               }}
               placeholder="Search for a dish… e.g., shrimp fried rice, Pad Thai"
-              className="w-full bg-transparent outline-none text-[15px] leading-6
+              className="w-full bg-transparent outline-none text-[11px] md:text-[15px] leading-6
                          placeholder:italic placeholder:text-gray-400 font-light"
             />
             <button

@@ -21,12 +21,20 @@ export const Dashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="bg-[#F4F4F4] pt-10 px-10 h-screen lg:h-screen overflow-y-auto min-w-0">
+      <div className="
+      bg-[#F4F4F4] pt-6 sm:pt-8 px-4 sm:px-6 md:px-8 lg:px-10
+      min-w-0 min-h-0
+      lg:h-[100svh] lg:overflow-y-auto overscroll-y-contain
+      ">
         <MainContent />
       </div>
 
       {/* Aside: มือถืออยู่ล่าง, เดสก์ท็อป sticky ขวา */}
-      <aside className="order-3 lg:order-none bg-white min-w-0 lg:sticky lg:top-0 h-auto lg:h-screen overflow-visible lg:overflow-y-auto">
+      <aside className="order-3 lg:order-none bg-white
+      min-w-0 min-h-0
+      lg:sticky lg:top-0 h-auto
+      lg:h-[100svh] overflow-visible lg:overflow-y-auto overscroll-y-contain
+      ">
         <Aside />
       </aside>
     </div>
