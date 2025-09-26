@@ -69,30 +69,27 @@ export const getUserAllEatingHistory = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // limit: default 50, max 200
-    let limit = Number.parseInt(req.query.limit, 10);
-    if (Number.isNaN(limit) || limit <= 0) limit = 50;
+    let limit = parseInt(req.query.limit, 10);
+    if (Number.isNaN(limit) || limit <= 0) limit = 10; // default 10
     if (limit > 200) limit = 200;
 
-    // date (YYYY-MM-DD เท่านั้น) — ถ้ารูปแบบไม่ตรง ตอบ 400 (กัน 500)
+    let offset = parseInt(req.query.offset, 10);
+    if (Number.isNaN(offset) || offset < 0) offset = 0;
+
     const dateStr = req.query.date?.trim();
     if (dateStr && !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      return res.status(400).json({
-        message: "Invalid date format. Use YYYY-MM-DD (e.g., 2025-09-23).",
-      });
+      return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.' });
     }
 
-    const history = await eatingHistoryService.getAllEatingHistoryByUserId(userId, { limit, dateStr });
+    const result = await eatingHistoryService.getAllEatingHistoryByUserId(userId, { limit, offset, dateStr });
 
-    res.status(200).json({
-      message: "Eating history retrieved successfully.",
-      data: history,
-    });
+    res.status(200).json({ message: 'Eating history retrieved successfully.', ...result });
   } catch (error) {
-    console.error("Error in getUserAllEatingHistory controller:", error);
-    res.status(500).json({ message: error.message || "Failed to retrieve eating history." });
+    console.error('Error in getUserAllEatingHistory controller:', error);
+    res.status(500).json({ message: error.message || 'Failed to retrieve eating history.' });
   }
 };
+
 
 /**
  * Controller to handle fetching nutrition summary for the authenticated user.

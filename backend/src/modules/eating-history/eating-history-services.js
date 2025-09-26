@@ -246,58 +246,41 @@ function formatYYYYMMDD_BKK(date) {
 }
 
 export const getAllEatingHistoryByUserId = async (userId, opts = {}) => {
-  const { limit = 50, dateStr } = opts;
+  const { limit = 10, offset = 0, dateStr } = opts; // default 10
 
-  try {
-    const where = { user_id: userId };
-
-    if (dateStr) {
-      const { start, end } = getDayRangeBangkok(dateStr);
-      where.consumed_at = { [Op.between]: [start, end] }; // ใช้วันเป็นหลัก
-    }
-
-    const rows = await EatingHistory.findAll({
-      where,
-      include: [
-        {
-          model: Food,
-          as: "food",
-          attributes: ["id", "name"],
-          required: false,
-        },
-      ],
-      order: [["consumed_at", "DESC"]],
-      attributes: { exclude: ["createdAt", "updatedAt", "user_id"] },
-      limit,
-    });
-
-    return rows.map((entry) => {
-      const ingredients = entry.custom_ingredients; // ถ้ามี getter จะได้เป็น object แล้ว
-      const servingSize = computeServingSize(ingredients, { decimals: 2 });
-      const foodName =
-        entry.custom_food_name ||
-        (entry.food && entry.food.name) ||
-        null;
-
-      return {
-        id: entry.id,
-        food_id: entry.food_id,
-        food_name: foodName,
-        serving_size: servingSize,
-        // 👇 แสดงเฉพาะวันที่ (YYYY-MM-DD) ตามเวลาไทย
-        consumed_at: formatYYYYMMDD_BKK(entry.consumed_at),
-        custom_ingredients: entry.custom_ingredients,
-        calculated_calories: entry.calculated_calories,
-        calculated_fat: entry.calculated_fat,
-        calculated_protein: entry.calculated_protein,
-        calculated_carbohydrates: entry.calculated_carbohydrates,
-        notes: entry.notes,
-      };
-    });
-  } catch (error) {
-    console.error(`Error in getAllEatingHistoryByUserId service for user ${userId}:`, error);
-    throw error;
+  const where = { user_id: userId };
+  if (dateStr) {
+    const { start, end } = getDayRangeBangkok(dateStr);
+    where.consumed_at = { [Op.between]: [start, end] };
   }
+
+  const rows = await EatingHistory.findAll({
+    where,
+    include: [{ model: Food, as: 'food', attributes: ['id', 'name'], required: false }],
+    order: [['consumed_at', 'DESC']],
+    attributes: { exclude: ['createdAt', 'updatedAt', 'user_id'] },
+    limit: limit + 1,   // ← ดึงเกินมา 1 เพื่อเช็ค hasMore
+    offset,
+  });
+
+  const hasMore = rows.length > limit;
+  const slice = hasMore ? rows.slice(0, limit) : rows;
+
+  const data = slice.map(entry => ({
+    id: entry.id,
+    food_id: entry.food_id,
+    food_name: entry.custom_food_name || entry.food?.name || null,
+    serving_size: computeServingSize(entry.custom_ingredients || [], { decimals: 2 }),
+    consumed_at: formatYYYYMMDD_BKK(entry.consumed_at), // YYYY-MM-DD
+    custom_ingredients: entry.custom_ingredients,
+    calculated_calories: entry.calculated_calories,
+    calculated_fat: entry.calculated_fat,
+    calculated_protein: entry.calculated_protein,
+    calculated_carbohydrates: entry.calculated_carbohydrates,
+    notes: entry.notes,
+  }));
+
+  return { data, hasMore, nextOffset: offset + data.length };
 };
 
 /**
