@@ -18,9 +18,9 @@ import { MdDeleteOutline } from "react-icons/md";
 import { FaRegEdit } from "react-icons/fa";
 import { readLocalHistory } from "../../utils/eatingHistory";
 import {
+  fetchLast7Days,
   updateEatingHistory,
   deleteEatingHistory,
-  allEatingHistory,
 } from "../API/eatingHistory";
 
 // ⬇️ ใช้คอมโพเนนต์ Autocomplete
@@ -39,60 +39,47 @@ const normalizeMeal = (m, i) => ({
   name: m?.name ?? "Unknown food",
   calories: Number(m?.calories ?? m?.nutrition?.calories) || 0,
   protein: Number(m?.protein ?? m?.nutrition?.protein) || 0,
-  carbs:
-    Number(m?.carbs ?? m?.nutrition?.carbs ?? m?.nutrition?.carbohydrates) || 0,
+  carbs: Number(m?.carbs ?? m?.nutrition?.carbs ?? m?.nutrition?.carbohydrates) || 0,
   fat: Number(m?.fat ?? m?.nutrition?.fat) || 0,
   notes: m?.notes ?? "",
   consumedAt: m?.consumedAt ?? m?.consumed_at ?? m?.date ?? null,
-  customIngredients: Array.isArray(m?.customIngredients)
-    ? m.customIngredients
-    : [],
+  customIngredients: Array.isArray(m?.customIngredients) ? m.customIngredients : [],
 });
 
-/* ---------- Date helpers (ใช้ “Local” ไม่ใช้ UTC เพื่อกันวันเหลื่อม) ---------- */
-const pad2 = (n) => (n < 10 ? `0${n}` : `${n}`);
-const toLocalYMD = (v) => {
-  if (v == null) return null;
-
-  const toDate = (val) => {
-    if (typeof val === "number") {
-      const ms = val < 1e12 ? val * 1000 : val;
-      const d = new Date(ms);
-      return isNaN(d) ? null : d;
-    }
-    if (typeof val === "string") {
-      // รองรับ dd/mm/yyyy
-      const m = val.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-      if (m) {
-        const [, dd, mm, yyyy] = m;
-        const d = new Date(+yyyy, +mm - 1, +dd);
-        return isNaN(d) ? null : d;
-      }
-      const d = new Date(val);
-      return isNaN(d) ? null : d;
-    }
-    const d = new Date(val);
-    return isNaN(d) ? null : d;
-  };
-
-  const d = toDate(v);
-  if (!d) return null;
-  const y = d.getFullYear();
-  const m = pad2(d.getMonth() + 1);
-  const day = pad2(d.getDate());
-  return `${y}-${m}-${day}`;
-};
-
-const getItemDateYMD = (m) => toLocalYMD(m?.consumedAt ?? m?.consumed_at ?? m?.date);
-
-/* ---------- เลือกมุมโค้งของก้อน stack ด้านบนสุด ---------- */
 const getBarRadius = (payload, key) => {
   const protein = Number(payload.protein || 0);
   const carbs = Number(payload.carbs || 0);
   const fat = Number(payload.fat || 0);
-  // ลำดับการวาด: protein -> carbs -> fat (fat อยู่บนสุด)
   const topKey = fat > 0 ? "fat" : carbs > 0 ? "carbs" : protein > 0 ? "protein" : null;
   return key === topKey ? [8, 8, 0, 0] : [0, 0, 0, 0];
+};
+
+/* ---------- Date helpers ---------- */
+const toYMD = (v) => {
+  if (v == null) return null;
+  if (typeof v === "number") {
+    const ms = v < 1e12 ? v * 1000 : v;
+    const d = new Date(ms);
+    return isNaN(d) ? null : d.toISOString().slice(0, 10);
+  }
+  if (typeof v === "string") {
+    const d1 = new Date(v);
+    if (!isNaN(d1)) return d1.toISOString().slice(0, 10);
+    const m = v.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (m) {
+      const [, dd, mm, yyyy] = m;
+      const d2 = new Date(Date.UTC(+yyyy, +mm - 1, +dd));
+      return d2.toISOString().slice(0, 10);
+    }
+    return null;
+  }
+  const d = new Date(v);
+  return isNaN(d) ? null : d.toISOString().slice(0, 10);
+};
+
+const getItemDateYMD = (m) => {
+  const v = m?.consumedAt ?? m?.consumed_at ?? m?.date ?? null;
+  return toYMD(v);
 };
 
 export const Aside = () => {
@@ -105,70 +92,15 @@ export const Aside = () => {
   // ข้อมูลกราฟย้อนหลัง 7 วัน
   const [macro7d, setMacro7d] = useState([]);
 
-  // loading & error (เบา ๆ)
-  const [loading, setLoading] = useState(false);
-  const [errMsg, setErrMsg] = useState("");
-
-  /* ---------- ฟิลเตอร์ของหน้า See All ---------- */
-  const today = new Date();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(today.getDate() - 6);
-
-  const [filter, setFilter] = useState({
-    q: "",
-    dateFrom: toLocalYMD(sevenDaysAgo), // default 7 วันล่าสุด
-    dateTo: toLocalYMD(today),
-    limit: 50,
-  });
-
-  const [sourceMeals, setSourceMeals] = useState([]); // เก็บ raw ทั้งหมด 1 แหล่ง
-  const filteredMeals = useMemo(() => {
-    // filter client-side เผื่อ API ยังไม่รองรับ query
-    let arr = [...sourceMeals];
-
-    if (filter.q.trim()) {
-      const kw = filter.q.trim().toLowerCase();
-      arr = arr.filter(
-        (m) =>
-          (m.name || "").toLowerCase().includes(kw) ||
-          (m.notes || "").toLowerCase().includes(kw)
-      );
-    }
-    const from = filter.dateFrom ? new Date(filter.dateFrom) : null;
-    const to = filter.dateTo ? new Date(filter.dateTo) : null;
-
-    arr = arr.filter((m) => {
-      const d = getItemDateYMD(m);
-      if (!d) return true; // ถ้าวันที่ว่าง ให้ปล่อยผ่าน
-      const dd = new Date(d);
-      if (from && dd < new Date(from.getFullYear(), from.getMonth(), from.getDate())) return false;
-      if (to && dd > new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59)) return false;
-      return true;
-    });
-
-    // เรียงล่าสุดก่อน
-    arr.sort(
-      (a, b) =>
-        new Date(b.consumedAt ?? b.consumed_at ?? b.date ?? 0) -
-        new Date(a.consumedAt ?? a.consumed_at ?? a.date ?? 0)
-    );
-
-    if (filter.limit && Number(filter.limit) > 0) {
-      arr = arr.slice(0, Number(filter.limit));
-    }
-    return arr;
-  }, [sourceMeals, filter]);
-
-  /* ---------- Compute 7d macros (ยึด local date) ---------- */
+  /* ---------- Compute 7d macros ---------- */
   const computeMacro7d = useCallback((list = []) => {
-    const t = new Date();
+    const today = new Date();
     const out = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
-      d.setDate(t.getDate() - i);
-      const key = toLocalYMD(d);
+      d.setDate(today.getDate() - i);
+      const key = toYMD(d);
       const label = d.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit" });
-
       const inDay = list.filter((m) => getItemDateYMD(m) === key);
       const protein = inDay.reduce((s, m) => s + Number(m.protein || 0), 0);
       const carbs = inDay.reduce((s, m) => s + Number(m.carbs || 0), 0);
@@ -180,30 +112,14 @@ export const Aside = () => {
 
   /* ---------- Single source of truth for fetching lists ---------- */
   const fetchNormalized = useCallback(async () => {
-    try {
-      setLoading(true);
-      setErrMsg("");
-      const raw = await allEatingHistory(); // ถ้า API รองรับ query ค่อยต่อยอดจาก filter
-      const arr = (Array.isArray(raw) ? raw : []).map(normalizeMeal);
-      return arr;
-    } catch (e) {
-      setErrMsg("Failed to load eating history.");
-      return [];
-    } finally {
-      setLoading(false);
-    }
+    const raw = await fetchLast7Days();
+    return (Array.isArray(raw) ? raw : []).map(normalizeMeal);
   }, []);
 
   const loadAndRender = useCallback(async () => {
     let list = await fetchNormalized();
     if (list.length === 0) list = readLocalHistory().map(normalizeMeal);
-
-    list.sort(
-      (a, b) =>
-        new Date(b.consumedAt ?? b.consumed_at ?? b.date ?? 0) -
-        new Date(a.consumedAt ?? a.consumed_at ?? a.date ?? 0)
-    );
-
+    list.sort((a, b) => new Date(b.consumedAt) - new Date(a.consumedAt));
     setLatest(list[0] || null);
     computeMacro7d(list);
     return list;
@@ -214,18 +130,13 @@ export const Aside = () => {
     (async () => {
       try {
         const resData = await nutritionGoal();
-        setNutrition(resData?.macronutrients ?? { protein: 0, fat: 0, carbs: 0 });
-      } catch {
-        // ignore
-      }
-      const list = await loadAndRender();
-      setSourceMeals(list);
-      setAllMeals(list);
+        setNutrition(resData.macronutrients);
+      } catch {}
+      await loadAndRender();
 
       const onUpdated = async () => {
-        const l = await loadAndRender();
-        setSourceMeals(l);
-        setAllMeals(l);
+        const list = await loadAndRender();
+        setAllMeals(list);
       };
       window.addEventListener("history:updated", onUpdated);
       return () => window.removeEventListener("history:updated", onUpdated);
@@ -246,7 +157,7 @@ export const Aside = () => {
 
   const openList = async () => {
     const data = await fetchNormalized();
-    setSourceMeals(data);
+    setAllMeals(data);
     setIsListOpen(true);
   };
   const closeList = () => setIsListOpen(false);
@@ -255,12 +166,13 @@ export const Aside = () => {
   const deleteMeal = async (id) => {
     if (!confirm("Delete this item?")) return;
     await deleteEatingHistory(id);
-    const data = await loadAndRender();
-    setSourceMeals(data);
+    const data = await fetchNormalized();
+    setAllMeals(data);
+    await loadAndRender();
   };
 
   const setAsLatest = (id) => {
-    const picked = sourceMeals.find((m) => m.id === id) || allMeals.find((m) => m.id === id);
+    const picked = allMeals.find((m) => m.id === id);
     if (picked) setLatest(picked);
     setIsListOpen(false);
   };
@@ -290,9 +202,7 @@ export const Aside = () => {
       carbs: latest.carbs ?? "",
       fat: latest.fat ?? "",
       notes: latest.notes ?? "",
-      customIngredients: Array.isArray(latest.customIngredients)
-        ? latest.customIngredients
-        : [],
+      customIngredients: Array.isArray(latest.customIngredients) ? latest.customIngredients : [],
       id: latest.id,
     });
     setIsEditing(true);
@@ -310,8 +220,6 @@ export const Aside = () => {
       }))
       .filter((it) => it.name.length > 0);
 
-    const consumed = latest?.consumedAt ?? latest?.consumed_at ?? latest?.date ?? null;
-
     const patch = {
       id: (form.id || "").trim(),
       name: (form.name || "").trim(),
@@ -321,14 +229,13 @@ export const Aside = () => {
       carbs: Number(form.carbs) || 0,
       fat: Number(form.fat) || 0,
       customIngredients: cleanedIngredients,
-      // ส่งทั้งคู่เพื่อความเข้ากันได้
-      consumedAt: consumed,
-      consumed_at: consumed,
+      consumedAt: latest?.consumedAt ?? latest?.consumed_at ?? latest?.date ?? null,
+      consumed_at: latest?.consumedAt ?? latest?.consumed_at ?? latest?.date ?? null,
     };
 
     await updateEatingHistory(patch);
     const list = await loadAndRender();
-    setSourceMeals(list);
+    setAllMeals(list);
     setIsEditing(false);
   };
 
@@ -337,7 +244,7 @@ export const Aside = () => {
     if (!confirm("Delete this item?")) return;
     await deleteEatingHistory(latest.id);
     const list = await loadAndRender();
-    setSourceMeals(list);
+    setAllMeals(list);
   };
 
   // ---------- helpers ของ customIngredients ----------
@@ -347,10 +254,8 @@ export const Aside = () => {
       customIngredients:
         typeof updater === "function" ? updater(f.customIngredients || []) : updater,
     }));
-  const addIngredientRow = () =>
-    setCI((arr) => [...arr, { name: "", quantity: 0, unit: "กรัม" }]);
-  const removeIngredientRow = (idx) =>
-    setCI((arr) => arr.filter((_, i) => i !== idx));
+  const addIngredientRow = () => setCI((arr) => [...arr, { name: "", quantity: 0, unit: "กรัม" }]);
+  const removeIngredientRow = (idx) => setCI((arr) => arr.filter((_, i) => i !== idx));
   const updateIngredientField = (idx, field, value) =>
     setCI((arr) => arr.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
 
@@ -364,12 +269,10 @@ export const Aside = () => {
     [nutrition]
   );
 
-  const fmtG = (n) =>
-    `${Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })} g`;
+  const fmtG = (n) => `${Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })} g`;
 
   const todayMacros = useMemo(() => {
-    if (!Array.isArray(macro7d) || macro7d.length === 0)
-      return { protein: 0, carbs: 0, fat: 0 };
+    if (!Array.isArray(macro7d) || macro7d.length === 0) return { protein: 0, carbs: 0, fat: 0 };
     return macro7d[macro7d.length - 1];
   }, [macro7d]);
 
@@ -379,33 +282,19 @@ export const Aside = () => {
         <div className="flex flex-col gap-4 px-5 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="font-cocoPro text-[18px] lg:text-[20px] text-[#2C2C2B]">
-                My Nutrition
-              </h1>
-              <h2 className="font-cocoPro text-[13px] lg:text-[15px] text-[#9F9F9F]">
-                View your nutrition history
-              </h2>
+              <h1 className="font-cocoPro text-[18px] lg:text-[20px] text-[#2C2C2B]">My Nutrition</h1>
+              <h2 className="font-cocoPro text-[13px] lg:text-[15px] text-[#9F9F9F]">View your nutrition history</h2>
             </div>
           </div>
 
           {/* กราฟย้อนหลัง 7 วัน */}
           <div className="mt-2">
-            <div className="poppins-semibold mb-2 text-[13px] text-[#6F6A5B]">
-              Macros — last 7 days
-            </div>
+            <div className="poppins-semibold mb-2 text-[13px] text-[#6F6A5B]">Macros — last 7 days</div>
             <div className="w-full h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={macro7d} margin={{ top: 6, right: 6, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    interval={0}
-                    tick={{ fontSize: 12, fill: AXIS }}
-                    minTickGap={0}
-                    tickMargin={8}
-                    axisLine={false}
-                    tickLine={false}
-                  />
+                  <XAxis dataKey="date" interval={0} tick={{ fontSize: 12, fill: AXIS }} minTickGap={0} tickMargin={8} axisLine={false} tickLine={false} />
                   <YAxis
                     tickFormatter={(v) => v.toLocaleString("th-TH")}
                     tick={{ fontSize: 12, fill: AXIS }}
@@ -420,29 +309,14 @@ export const Aside = () => {
                     labelFormatter={(l) => `Date ${l}`}
                     contentStyle={{ fontSize: 12 }}
                   />
-                  <Bar
-                    dataKey="protein"
-                    stackId="macro"
-                    fill={MACRO_COLORS.protein}
-                    shape={(props) => (
-                      <Rectangle {...props} radius={getBarRadius(props.payload, "protein")} />
-                    )}
+                  <Bar dataKey="protein" stackId="macro" fill={MACRO_COLORS.protein}
+                    shape={(props) => <Rectangle {...props} radius={getBarRadius(props.payload, "protein")} />}
                   />
-                  <Bar
-                    dataKey="carbs"
-                    stackId="macro"
-                    fill={MACRO_COLORS.carbs}
-                    shape={(props) => (
-                      <Rectangle {...props} radius={getBarRadius(props.payload, "carbs")} />
-                    )}
+                  <Bar dataKey="carbs" stackId="macro" fill={MACRO_COLORS.carbs}
+                    shape={(props) => <Rectangle {...props} radius={getBarRadius(props.payload, "carbs")} />}
                   />
-                  <Bar
-                    dataKey="fat"
-                    stackId="macro"
-                    fill={MACRO_COLORS.fat}
-                    shape={(props) => (
-                      <Rectangle {...props} radius={getBarRadius(props.payload, "fat")} />
-                    )}
+                  <Bar dataKey="fat" stackId="macro" fill={MACRO_COLORS.fat}
+                    shape={(props) => <Rectangle {...props} radius={getBarRadius(props.payload, "fat")} />}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -451,34 +325,19 @@ export const Aside = () => {
             {/* Legend เล็กๆ */}
             <div className="mt-6 flex items-center justify-center gap-4 text-[11px] text-[#6F6A5B]">
               <span className="inline-flex items-center gap-2">
-                <i
-                  className="inline-block w-3 h-3 rounded"
-                  style={{ background: MACRO_COLORS.carbs }}
-                />
+                <i className="inline-block w-3 h-3 rounded" style={{ background: MACRO_COLORS.carbs }} />
                 <span>Carbs</span>
-                <span className="font-semibold" style={{ color: MACRO_COLORS.carbs }}>
-                  {fmtG(todayMacros.carbs)}
-                </span>
+                <span className="font-semibold" style={{ color: MACRO_COLORS.carbs }}>{fmtG(todayMacros.carbs)}</span>
               </span>
               <span className="inline-flex items-center gap-2">
-                <i
-                  className="inline-block w-3 h-3 rounded"
-                  style={{ background: MACRO_COLORS.fat }}
-                />
+                <i className="inline-block w-3 h-3 rounded" style={{ background: MACRO_COLORS.fat }} />
                 <span>Fat</span>
-                <span className="font-semibold" style={{ color: MACRO_COLORS.fat }}>
-                  {fmtG(todayMacros.fat)}
-                </span>
+                <span className="font-semibold" style={{ color: MACRO_COLORS.fat }}>{fmtG(todayMacros.fat)}</span>
               </span>
               <span className="inline-flex items-center gap-2">
-                <i
-                  className="inline-block w-3 h-3 rounded"
-                  style={{ background: MACRO_COLORS.protein }}
-                />
+                <i className="inline-block w-3 h-3 rounded" style={{ background: MACRO_COLORS.protein }} />
                 <span>Protein</span>
-                <span className="font-semibold" style={{ color: MACRO_COLORS.protein }}>
-                  {fmtG(todayMacros.protein)}
-                </span>
+                <span className="font-semibold" style={{ color: MACRO_COLORS.protein }}>{fmtG(todayMacros.protein)}</span>
               </span>
             </div>
           </div>
@@ -498,33 +357,21 @@ export const Aside = () => {
               <div className="text-[#9F9F9F] text-[12px]">Lack of physical activity</div>
             </div>
           </div>
-          <div
-            className="text-[#9F9F9F] text-[13px] lg:text-[14px] cursor-pointer hover:underline"
-            onClick={openList}
-          >
+          <div className="text-[#9F9F9F] text-[13px] lg:text-[14px] cursor-pointer hover:underline" onClick={openList}>
             See All
           </div>
         </div>
 
         <div className="px-6 lg:px-7 py-3 h-full">
-          {loading ? (
+          {!latest ? (
             <div className="py-10 px-6 text-center text-sm md:text-md text-[#626262]">
-              Loading…
-            </div>
-          ) : errMsg ? (
-            <div className="py-10 px-6 text-center text-sm md:text-md text-red-600">{errMsg}</div>
-          ) : !latest ? (
-            <div className="py-10 px-6 text-center text-sm md:text-md text-[#626262]">
-              It looks like you don’t have any eating history yet. Try saving one from the Upload
-              page.
+              It looks like you don’t have any eating history yet. Try saving one from the Upload page.
             </div>
           ) : (
             <div className="bg-[#F4F4F4] w-full rounded-xl py-5 px-6 overflow-y-auto">
               <div className="flex justify-between items-start gap-4">
                 <div className="min-w-0">
-                  <div className="text-base lg:text-md poppins-semibold truncate">
-                    {latest.name}
-                  </div>
+                  <div className="text-base lg:text-md poppins-semibold truncate">{latest.name}</div>
                   <div className="flex items-center gap-2 mt-1">
                     <div className="flex items-center justify-center bg-[#2C2C2C] w-[17px] h-[17px] rounded-full">
                       <BsFire className="text-white" size={10} />
@@ -533,53 +380,38 @@ export const Aside = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button
-                    className="flex items-center gap-1 text-xs px-3 py-1 rounded-full border border-[#A9A9A9] hover:bg-black hover:text-white transition"
-                    onClick={openEdit}
-                  >
+                  <button className="flex items-center gap-1 text-xs px-3 py-1 rounded-full border border-[#A9A9A9] hover:bg-black hover:text-white transition" onClick={openEdit}>
                     <FaRegEdit size={12} /> Edit
                   </button>
-                  <button
-                    className="flex items-center gap-1 text-xs px-3 py-1 rounded-full border border-[#A9A9A9] hover:bg-black hover:text-white transition"
-                    onClick={deleteLatest}
-                  >
+                  <button className="flex items-center gap-1 text-xs px-3 py-1 rounded-full border border-[#A9A9A9] hover:bg-black hover:text-white transition" onClick={deleteLatest}>
                     <MdDeleteOutline size={13} /> Delete
                   </button>
                 </div>
               </div>
 
               {/* notes */}
-              <p className="text-[11px] md:text-[12px] Fahkwang py-4 line-clamp-3 md:line-clamp-2">
-                {latest.notes}
-              </p>
+              <p className="text-[11px] md:text-[12px] Fahkwang py-4 line-clamp-3 md:line-clamp-2">{latest.notes}</p>
 
               {/* PREVIEW Ingredients */}
-              {Array.isArray(latest.customIngredients) &&
-                latest.customIngredients.length > 0 && (
-                  <div className="mt-2">
-                    <div className="text-[12px] font-semibold mb-2">Ingredients</div>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-[#444]">
-                      {latest.customIngredients.slice(0, 6).map((it, i) => (
-                        <li key={i}>
-                          • {it.name} — {it.quantity ?? 0} {it.unit ?? "-"}
-                        </li>
-                      ))}
-                    </ul>
-                    {latest.customIngredients.length > 6 && (
-                      <div className="text-[11px] text-[#777] mt-1">
-                        +{latest.customIngredients.length - 6} more
-                      </div>
-                    )}
-                  </div>
-                )}
+              {Array.isArray(latest.customIngredients) && latest.customIngredients.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-[12px] font-semibold mb-2">Ingredients</div>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-[#444]">
+                    {latest.customIngredients.slice(0, 6).map((it, i) => (
+                      <li key={i}>• {it.name} — {it.quantity ?? 0} {it.unit ?? "-"}</li>
+                    ))}
+                  </ul>
+                  {latest.customIngredients.length > 6 && (
+                    <div className="text-[11px] text-[#777] mt-1">+{latest.customIngredients.length - 6} more</div>
+                  )}
+                </div>
+              )}
 
               {/* แถวเดิม: Protein | Carbs | Fat */}
               <div className="flex items-start gap-2 justify-start pt-5">
                 <div className="flex items-center gap-1 border-r border-r-[#A9A9A9] pr-2">
                   <span className="font-bold text-[12px]">Protein</span>
-                  <span className="font-bold text-[11px] text-[#626262]">
-                    {latest.protein}g
-                  </span>
+                  <span className="font-bold text-[11px] text-[#626262]">{latest.protein}g</span>
                 </div>
                 <div className="flex items-center gap-2 border-r border-r-[#A9A9A9] pr-3">
                   <span className="font-bold text-[12px]">Carbs</span>
@@ -668,10 +500,7 @@ export const Aside = () => {
                         value={quickName}
                         onChange={setQuickName}
                         onPick={({ name, unit }) => {
-                          setCI((arr) => [
-                            ...arr,
-                            { name, quantity: 0, unit: unit || "กรัม" },
-                          ]);
+                          setCI((arr) => [...arr, { name, quantity: 0, unit: unit || "กรัม" }]);
                           setQuickName("");
                         }}
                         placeholder="ค้นหาวัตถุดิบแล้วกดเลือกเพื่อเพิ่ม…"
@@ -680,9 +509,7 @@ export const Aside = () => {
                     </div>
 
                     {form.customIngredients.length === 0 ? (
-                      <div className="text-[12px] text-[#777]">
-                        No ingredients in this item yet.
-                      </div>
+                      <div className="text-[12px] text-[#777]">No ingredients in this item yet.</div>
                     ) : (
                       <div className="space-y-2">
                         {form.customIngredients.map((it, idx) => (
@@ -697,8 +524,7 @@ export const Aside = () => {
                                 onChange={(v) => updateIngredientField(idx, "name", v)}
                                 onPick={({ name, unit }) => {
                                   updateIngredientField(idx, "name", name);
-                                  if (unit && !it.unit)
-                                    updateIngredientField(idx, "unit", unit);
+                                  if (unit && !it.unit) updateIngredientField(idx, "unit", unit);
                                 }}
                                 placeholder="พิมพ์ค้นหาวัตถุดิบ…"
                                 debounceMs={200}
@@ -711,9 +537,7 @@ export const Aside = () => {
                               className="col-span-6 sm:col-span-3 min-w-0 w-full border border-neutral-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-black/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               placeholder="ปริมาณ"
                               value={it.quantity ?? ""}
-                              onChange={(e) =>
-                                updateIngredientField(idx, "quantity", e.target.value)
-                              }
+                              onChange={(e) => updateIngredientField(idx, "quantity", e.target.value)}
                             />
 
                             {/* Unit */}
@@ -722,9 +546,7 @@ export const Aside = () => {
                               placeholder="หน่วย"
                               list="unit-list"
                               value={it.unit ?? "กรัม"}
-                              onChange={(e) =>
-                                updateIngredientField(idx, "unit", e.target.value)
-                              }
+                              onChange={(e) => updateIngredientField(idx, "unit", e.target.value)}
                             />
 
                             {/* Remove */}
@@ -780,7 +602,7 @@ export const Aside = () => {
           {/* drawer/modal */}
           <div
             className="
-              relative bg-white w-full lg:w-[820px] lg:rounded-2xl
+              relative bg-white w-full lg:w-[720px] lg:rounded-2xl
               max-h-[85vh] overflow-visible
               rounded-t-2xl p-4 lg:p-6
             "
@@ -792,85 +614,22 @@ export const Aside = () => {
               </button>
             </div>
 
-            {/* Filters */}
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-              <input
-                className="border rounded-md px-3 py-2 outline-none"
-                placeholder="Search name/notes…"
-                value={filter.q}
-                onChange={(e) => setFilter((f) => ({ ...f, q: e.target.value }))}
-              />
-              <label className="text-xs text-[#555] flex flex-col">
-                <span className="mb-1">From</span>
-                <input
-                  type="date"
-                  className="border rounded-md px-3 py-2 outline-none"
-                  value={filter.dateFrom || ""}
-                  onChange={(e) => setFilter((f) => ({ ...f, dateFrom: e.target.value }))}
-                />
-              </label>
-              <label className="text-xs text-[#555] flex flex-col">
-                <span className="mb-1">To</span>
-                <input
-                  type="date"
-                  className="border rounded-md px-3 py-2 outline-none"
-                  value={filter.dateTo || ""}
-                  onChange={(e) => setFilter((f) => ({ ...f, dateTo: e.target.value }))}
-                />
-              </label>
-              <label className="text-xs text-[#555] flex flex-col">
-                <span className="mb-1">Limit</span>
-                <input
-                  type="number"
-                  className="border rounded-md px-3 py-2 outline-none"
-                  value={filter.limit}
-                  min={1}
-                  step={1}
-                  onChange={(e) =>
-                    setFilter((f) => ({ ...f, limit: Math.max(1, Number(e.target.value) || 1) }))
-                  }
-                />
-              </label>
-              <div className="flex items-end">
-                <button
-                  className="w-full text-sm px-3 py-2 rounded-md border hover:bg-black hover:text-white transition"
-                  onClick={async () => {
-                    const data = await fetchNormalized();
-                    setSourceMeals(data);
-                  }}
-                  title="Refresh from server"
-                >
-                  Refresh
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-3 overflow-y-auto" style={{ maxHeight: "55vh" }}>
-              {loading ? (
-                <div className="py-10 text-center text-sm text-[#666]">Loading…</div>
-              ) : filteredMeals.length === 0 ? (
-                <div className="py-10 text-center text-sm text-[#666]">
-                  ไม่พบรายการตามเงื่อนไข
-                </div>
+            <div className="mt-3 overflow-y-auto" style={{ maxHeight: "65vh" }}>
+              {allMeals.length === 0 ? (
+                <div className="py-10 text-center text-sm text-[#666]">ยังไม่มีประวัติการกิน</div>
               ) : (
                 <ul className="divide-y">
-                  {filteredMeals.map((m) => (
+                  {allMeals.map((m) => (
                     <li key={m.id} className="py-3 flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium truncate max-w-[55vw] lg:max-w-[520px]">
-                            {m.name}
-                          </p>
-                          <span className="text-xs text-[#777]">
-                            {m.calories} Cal · P{m.protein} C{m.carbs} F{m.fat}
-                          </span>
+                          <p className="font-medium truncate max-w-[55vw] lg:max-w-[420px]">{m.name}</p>
+                          <span className="text-xs text-[#777]">{m.calories} Cal · P{m.protein} C{m.carbs} F{m.fat}</span>
                         </div>
                         <p className="text-xs pt-3 text-[#999] mt-1 line-clamp-2">{m.notes}</p>
                         {getItemDateYMD(m) && (
                           <p className="text-[11px] pt-1 text-[#5c5c5c] mt-1">
-                            {new Date(
-                              m.consumedAt ?? m.consumed_at ?? m.date
-                            ).toLocaleString()}
+                            {new Date(m.consumedAt ?? m.consumed_at ?? m.date).toLocaleString()}
                           </p>
                         )}
                       </div>
