@@ -849,7 +849,7 @@ export const Aside = () => {
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b">
-              <divร className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 {isEditing && (
                   <button
                     className="text-sm px-3 py-1 rounded-full border hover:bg-black hover:text-white"
@@ -865,7 +865,7 @@ export const Aside = () => {
                 <h3 className="text-lg lg:text-xl font-semibold">
                   {isEditing ? "Edit Meal" : "All Saved Meals"}
                 </h3>
-              </divร>
+              </div>
               <button className="px-3 py-1 cursor-pointer" onClick={closeList}>
                 <IoCloseCircle size={25} />
               </button>

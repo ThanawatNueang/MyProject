@@ -162,7 +162,29 @@ export async function eatingHistory(startDate, endDate) {
   // คาดหวังหลังบ้านกลับ { data: [...] }
   const data = await handleJsonResponse(res, "GET /api/eatinghistory");
   return Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-}
+} 
+
+export async function allEatingHistory(Date, plimit) {
+  const params = new URLSearchParams();
+  if (Date) params.set("Date", Date);
+  let limit = 10
+  limit += plimit
+
+  const url =
+    params.toString()
+      ? `${BASE_URL}/api/eatinghistory/all?limit=${limit}?date=${params.toString()}`
+      : `${BASE_URL}/api/eatinghistory/all?limit=${limit}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { ...getAuthHeader() }, // GET ไม่จำเป็นต้องใส่ Content-Type
+    cache: "no-store",
+  });
+
+    // คาดหวังหลังบ้านกลับ { data: [...] }
+  const data = await handleJsonResponse(res, "GET /api/eatinghistory/all");
+  return Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+} 
 
 /** Helper: ดึง 7 วันย้อนหลัง */
 export async function fetchLast7Days() {
