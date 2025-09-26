@@ -21,7 +21,6 @@ import {
   fetchLast7Days,
   updateEatingHistory,
   deleteEatingHistory,
-  allEatingHistory,
 } from "../API/eatingHistory";
 import {
   suggestIngredients,
@@ -318,7 +317,7 @@ export const Aside = () => {
   };
 
   const openList = async () => {
-    const data = await allEatingHistory();
+    const data = await fetchNormalized();
     setAllMeals(data);
     setIsListOpen(true);
   };
