@@ -67,6 +67,36 @@ export const getUserEatingHistory = async (req, res) => {
   }
 };
 
+export const getUserAllEatingHistory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // รับ limit และ date จาก query
+    const rawLimit = req.query.limit;
+    const dateStr  = req.query.date?.trim();
+
+    // แปลง/กำหนดค่า limit อย่างปลอดภัย (default 50, max 200)
+    let limit = Number.parseInt(rawLimit, 10);
+    if (Number.isNaN(limit) || limit <= 0) limit = 50;
+    if (limit > 200) limit = 200;
+
+    const history = await eatingHistoryService.getAllEatingHistoryByUserId(
+      userId,
+      { limit, dateStr } // ส่งพารามิเตอร์เข้า service
+    );
+
+    res.status(200).json({
+      message: "Eating history retrieved successfully.",
+      data: history,
+    });
+  } catch (error) {
+    console.error("Error in getUserAllEatingHistory controller:", error);
+    res
+      .status(500)
+      .json({ message: error.message || "Failed to retrieve eating history." });
+  }
+};
+
 /**
  * Controller to handle fetching nutrition summary for the authenticated user.
  * This endpoint provides the total summary for the dashboard's top cards.

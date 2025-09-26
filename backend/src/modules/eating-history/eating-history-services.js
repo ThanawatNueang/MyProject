@@ -226,6 +226,86 @@ export const getEatingHistoryByUserId = async (userId, startDate, endDate) => {
   }
 };
 
+function getDayRange(dateStr) {
+  const start = new Date(`${dateStr}T00:00:00.000Z`);
+  const end   = new Date(`${dateStr}T23:59:59.999Z`);
+  return { start, end };
+}
+
+export const getAllEatingHistoryByUserId = async (userId, opts = {}) => {
+  const { limit = 50, dateStr } = opts;
+
+  try {
+    const where = { user_id: userId };
+
+    // ถ้ามี date ให้ "ใช้เป็นหลัก" → กรอง consumed_at เฉพาะวันนั้น
+    if (dateStr) {
+      const { start, end } = getDayRange(dateStr);
+      where.consumed_at = { [Op.between]: [start, end] };
+    }
+
+    // (ทางเลือกภายหลัง) ถ้าอยากรองรับช่วงวัน:
+    // const { from, to } = opts;
+    // if (from || to) {
+    //   where.consumed_at = {};
+    //   if (from) where.consumed_at[Op.gte] = new Date(`${from}T00:00:00.000Z`);
+    //   if (to)   where.consumed_at[Op.lte] = new Date(`${to}T23:59:59.999Z`);
+    // }
+
+    const historyRows = await EatingHistory.findAll({
+      where,
+      include: [
+        {
+          model: Food,
+          as: "food",
+          attributes: ["id", "name"],
+          required: false,
+        },
+      ],
+      order: [["consumed_at", "DESC"]],
+      attributes: {
+        exclude: ["createdAt", "updatedAt", "user_id"],
+      },
+      limit, // ใช้ limit ที่รับมา
+    });
+
+    // ระวัง: โค้ดเดิมอ้าง history.ingredients (ผิด scope)
+    // ต้องคำนวณต่อ "รายการ" แยกกัน
+    return historyRows.map((entry) => {
+      // custom_ingredients จะถูก parse โดย getter (ถ้าเซ็ตไว้ใน model)
+      const ingredients = entry.custom_ingredients;
+
+      // ถ้ามี util computeServingSize อยู่แล้ว ใช้คำนวณจาก ingredients
+      const servingSizeFromQty = computeServingSize(ingredients, { decimals: 2 });
+
+      const foodName =
+        entry.custom_food_name ||
+        (entry.food && entry.food.name) ||
+        null;
+
+      return {
+        id: entry.id,
+        food_id: entry.food_id,
+        food_name: foodName,
+        serving_size: servingSizeFromQty,
+        consumed_at: entry.consumed_at,
+        custom_ingredients: entry.custom_ingredients,
+        calculated_calories: entry.calculated_calories,
+        calculated_fat: entry.calculated_fat,
+        calculated_protein: entry.calculated_protein,
+        calculated_carbohydrates: entry.calculated_carbohydrates,
+        notes: entry.notes,
+      };
+    });
+  } catch (error) {
+    console.error(
+      `Error in getAllEatingHistoryByUserId service for user ${userId}:`,
+      error
+    );
+    throw error;
+  }
+};
+
 /**
  * Calculates the summary of nutrition for a specific user within a date range.
  * This function provides the total summary for the dashboard's top cards.
