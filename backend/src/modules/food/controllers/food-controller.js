@@ -44,7 +44,6 @@ export const getFoodById = async (req, res) => {
 
 export const getFoodName = async (req, res) => {
   try {
-    console.log(req.params.name)
     const food = await foodService.getFoodByName(req.params.name);
     res.status(200).json({
       message: 'Food retrieved successfully.',

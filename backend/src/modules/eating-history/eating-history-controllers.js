@@ -13,7 +13,6 @@ export const createEatingHistoryEntry = async (req, res) => {
     // Assuming req.user.id is populated by an authentication middleware
     const userId = req.user.id;
     const mealData = req.body; // foodId, customIngredients, notes, consumedAt
-    console.log(mealData)
     const newEntry = await eatingHistoryService.logMeal(userId, mealData);
     res.status(201).json({
       message: 'Meal logged successfully.',
@@ -30,7 +29,6 @@ export const updateEatingHistoryEntry = async (req, res) => {
     const userId = req.user.id;
     const entryId = req.body.id; // สมมติ route: PATCH /eating-history/:id
     const mealData = req.body;
-    console.log(userId, entryId, mealData)
     const updated = await eatingHistoryService.updateMeal(userId, entryId, mealData);
     res.status(200).json({ message: "Meal updated successfully.", data: updated });
   } catch (error) {
@@ -129,7 +127,6 @@ export const deleteEatingHistory = async (req, res) => {
   try {
     const userId = req.user.id;
     const id = req.params.id;
-    console.log(`user = ${userId}, id = ${id}`)
     if (!id) {
       return res.status(400).json({
         success: false,

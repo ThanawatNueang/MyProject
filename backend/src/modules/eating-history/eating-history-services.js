@@ -24,9 +24,9 @@ async function computeTotals(customIngredients = []) {
   const map = new Map(rows.map(r => [String(r.id), r]));
 
   for (const item of customIngredients) {
-    console.log(item)
+
     const row = map.get(String(item.id));
-    console.log(row)
+
     if (!row) {
       // เข้มงวด: โยน error
       throw new Error(`Ingredient not found: ${item.id}`);
@@ -67,7 +67,7 @@ export const logMeal = async (userId, mealData) => {
 
     if (customIngredients && Array.isArray(customIngredients)) {
       for (const item of customIngredients) {
-        console.log(item.id)
+
         // Fetch full ingredient details from DB to get nutrition_per_unit
         const ingredient = await Ingredient.findByPk(item.id, {
           attributes: ['calories_per_unit', 'fat_per_unit', 'protein_per_unit', 'carbohydrates_per_unit']
@@ -143,7 +143,7 @@ export const updateMeal = async (userId, entryId, mealData) => {
     if (typeof custom_food_name !== "undefined") payload.custom_food_name = custom_food_name || payload.food_name;
     if (typeof notes !== "undefined") payload.notes = notes ?? null;
     if (typeof consumedAt !== "undefined") payload.consumed_at = consumedAt || new Date();
-    console.log(customIngredients)
+
     // หากผู้ใช้ส่ง customIngredients มา (อาจเป็น [] เพื่อเคลียร์)
     if (typeof customIngredients !== "undefined") {
       // คำนวณใหม่ทั้งหมด
@@ -272,31 +272,31 @@ export const getAllEatingHistoryByUserId = async (userId, opts = {}) => {
     // ระวัง: โค้ดเดิมอ้าง history.ingredients (ผิด scope)
     // ต้องคำนวณต่อ "รายการ" แยกกัน
     return historyRows.map((entry) => {
-      // custom_ingredients จะถูก parse โดย getter (ถ้าเซ็ตไว้ใน model)
-      const ingredients = entry.custom_ingredients;
+  const foodName =
+    entry.custom_food_name ||
+    (entry.food && entry.food.name) ||
+    null;
 
-      // ถ้ามี util computeServingSize อยู่แล้ว ใช้คำนวณจาก ingredients
-      const servingSizeFromQty = computeServingSize(ingredients, { decimals: 2 });
+  // ฟอร์แมต consumed_at ให้เหลือ YYYY-MM-DD
+  const consumedDate = entry.consumed_at
+    ? entry.consumed_at.toISOString().split("T")[0]
+    : null;
 
-      const foodName =
-        entry.custom_food_name ||
-        (entry.food && entry.food.name) ||
-        null;
+  return {
+    id: entry.id,
+    food_id: entry.food_id,
+    food_name: foodName,
+    serving_size: computeServingSize(entry.custom_ingredients, { decimals: 2 }),
+    consumed_at: consumedDate,   // 👈 เปลี่ยนตรงนี้
+    custom_ingredients: entry.custom_ingredients,
+    calculated_calories: entry.calculated_calories,
+    calculated_fat: entry.calculated_fat,
+    calculated_protein: entry.calculated_protein,
+    calculated_carbohydrates: entry.calculated_carbohydrates,
+    notes: entry.notes,
+  };
+});
 
-      return {
-        id: entry.id,
-        food_id: entry.food_id,
-        food_name: foodName,
-        serving_size: servingSizeFromQty,
-        consumed_at: entry.consumed_at,
-        custom_ingredients: entry.custom_ingredients,
-        calculated_calories: entry.calculated_calories,
-        calculated_fat: entry.calculated_fat,
-        calculated_protein: entry.calculated_protein,
-        calculated_carbohydrates: entry.calculated_carbohydrates,
-        notes: entry.notes,
-      };
-    });
   } catch (error) {
     console.error(
       `Error in getAllEatingHistoryByUserId service for user ${userId}:`,
@@ -347,7 +347,7 @@ export const getEatingHistorySummary = async (userId, startDate, endDate) => {
 
 
 export const deleteEatingHistory = async (userId, id) => {
-  console.log(id)
+
   return await sequelize.transaction(async (t) => {
     try {
       const entry = await EatingHistory.findByPk(id, { transaction: t });
