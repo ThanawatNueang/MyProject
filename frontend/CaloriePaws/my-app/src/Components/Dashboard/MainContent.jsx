@@ -36,7 +36,6 @@ import {
 const backendURL = "https://caloriepaws-node.azurewebsites.net"
 const LS_CURRENT_WEIGHT = "ui:weightCurrent";
 
-
 // ===== config สี & เกณฑ์ =====
 const COLORS = {
   ok: "#2C2C2C",
@@ -565,6 +564,30 @@ export const MainContent = () => {
     };
   }, [summaryCalories]);
 
+  // helpers
+  const clamp0 = (n) => Math.max(0, Number(n) || 0);
+  const fmtG2 = (n) =>
+    `${clamp0(n).toLocaleString("th-TH", { maximumFractionDigits: 2 })} g`;
+
+  // Remaining / Over-by for macros
+  const remaining = useMemo(() => {
+    if (!macroTargets) return null;
+
+    const tP = Number(macroTargets.protein.grams || 0);
+    const tC = Number(macroTargets.carbs.grams || 0);
+    const tF = Number(macroTargets.fat.grams || 0);
+
+    const aP = Number(todayMacros.protein || 0);
+    const aC = Number(todayMacros.carbs || 0);
+    const aF = Number(todayMacros.fat || 0);
+
+    return {
+      protein: { left: clamp0(tP - aP), over: clamp0(aP - tP) },
+      carbs: { left: clamp0(tC - aC), over: clamp0(aC - tC) },
+      fat: { left: clamp0(tF - aF), over: clamp0(aF - tF) },
+    };
+  }, [macroTargets, todayMacros]);
+
   return (
     <div className="flex flex-col w-full min-w-0 px-4 sm:px-6 lg:px-8 overflow-x-hidden max-w-screen-2xl mx-auto">
       <div className="flex items-center gap-8">
@@ -768,7 +791,7 @@ export const MainContent = () => {
                 <h3 className="text-lg lg:text-2xl font-semibold tracking-tight">
                   Protein
                 </h3>
-                 <h3 className="text-[13px] font-semibold">Consumed today</h3>
+                <h3 className="text-[13px] font-semibold">Consumed today</h3>
                 <div className="mt-2 flex items-baseline gap-2 pb-2">
                   <span className="text-3xl sm:text-4xl font-extrabold leading-none tracking-tight">
                     {fmtG(todayMacros.protein)}
@@ -785,6 +808,17 @@ export const MainContent = () => {
                     {macroTargets.protein.grams} g
                   </span>
                 </div>
+                {/* Remaining / Over-by */}
+                <span className="mt-1 inline-flex items-center gap-1 font-medium text-sm">
+                  {remaining.protein.over > 0 ? (
+                    <TbArrowUpRight size={14} />
+                  ) : (
+                    <TbArrowDownRight size={14} />
+                  )}
+                  {remaining.carbs.over > 0
+                    ? `Over by ${fmtG2(remaining.protein.over)}`
+                    : `Remaining ${fmtG2(remaining.protein.left)}`}
+                </span>
               </div>
 
               {/* Carbs */}
@@ -816,6 +850,17 @@ export const MainContent = () => {
                     </span>
                   </div>
                 }
+                {/* Remaining / Over-by */}
+                <span className="mt-1 inline-flex items-center gap-1 font-medium text-sm">
+                  {remaining.carbs.over > 0 ? (
+                    <TbArrowUpRight size={14} />
+                  ) : (
+                    <TbArrowDownRight size={14} />
+                  )}
+                  {remaining.carbs.over > 0
+                    ? `Over by ${fmtG2(remaining.carbs.over)}`
+                    : `Remaining ${fmtG2(remaining.carbs.left)}`}
+                </span>
               </div>
 
               {/* Fat */}
@@ -846,6 +891,17 @@ export const MainContent = () => {
                     {macroTargets.fat.grams} g
                   </span>
                 </div>
+               {/* Remaining / Over-by */}
+                <span className="mt-1 inline-flex items-center gap-1 font-medium text-sm">
+                  {remaining.fat.over > 0 ? (
+                    <TbArrowUpRight size={14} />
+                  ) : (
+                    <TbArrowDownRight size={14} />
+                  )}
+                  {remaining.carbs.over > 0
+                    ? `Over by ${fmtG2(remaining.fat.over)}`
+                    : `Remaining ${fmtG2(remaining.fat.left)}`}
+                </span> 
               </div>
             </div>
           </section>
