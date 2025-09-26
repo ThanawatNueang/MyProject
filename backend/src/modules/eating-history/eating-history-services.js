@@ -2,6 +2,7 @@
 
 import db from '../../models/index.js'; // Import db object
 import { computeServingSize } from '../../utils/serving.js'
+import { Op } from 'sequelize';
 
 const { sequelize } = db;
 const EatingHistory = db.EatingHistory;
@@ -226,10 +227,22 @@ export const getEatingHistoryByUserId = async (userId, startDate, endDate) => {
   }
 };
 
-function getDayRange(dateStr) {
-  const start = new Date(`${dateStr}T00:00:00.000Z`);
-  const end   = new Date(`${dateStr}T23:59:59.999Z`);
+function getDayRangeBangkok(dateStr /* YYYY-MM-DD */) {
+  // ใช้ offset +07:00 เพื่อให้ตีความเป็นเวลาไทยแล้วแปลงเป็น UTC ใน Date object
+  const start = new Date(`${dateStr}T00:00:00.000+07:00`);
+  const end   = new Date(`${dateStr}T23:59:59.999+07:00`);
   return { start, end };
+}
+
+/** format เป็น YYYY-MM-DD ตามเวลา Asia/Bangkok */
+function formatYYYYMMDD_BKK(date) {
+  if (!date) return null;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date); // en-CA ให้รูปแบบ YYYY-MM-DD
 }
 
 export const getAllEatingHistoryByUserId = async (userId, opts = {}) => {
@@ -238,21 +251,12 @@ export const getAllEatingHistoryByUserId = async (userId, opts = {}) => {
   try {
     const where = { user_id: userId };
 
-    // ถ้ามี date ให้ "ใช้เป็นหลัก" → กรอง consumed_at เฉพาะวันนั้น
     if (dateStr) {
-      const { start, end } = getDayRange(dateStr);
-      where.consumed_at = { [Op.between]: [start, end] };
+      const { start, end } = getDayRangeBangkok(dateStr);
+      where.consumed_at = { [Op.between]: [start, end] }; // ใช้วันเป็นหลัก
     }
 
-    // (ทางเลือกภายหลัง) ถ้าอยากรองรับช่วงวัน:
-    // const { from, to } = opts;
-    // if (from || to) {
-    //   where.consumed_at = {};
-    //   if (from) where.consumed_at[Op.gte] = new Date(`${from}T00:00:00.000Z`);
-    //   if (to)   where.consumed_at[Op.lte] = new Date(`${to}T23:59:59.999Z`);
-    // }
-
-    const historyRows = await EatingHistory.findAll({
+    const rows = await EatingHistory.findAll({
       where,
       include: [
         {
@@ -263,45 +267,35 @@ export const getAllEatingHistoryByUserId = async (userId, opts = {}) => {
         },
       ],
       order: [["consumed_at", "DESC"]],
-      attributes: {
-        exclude: ["createdAt", "updatedAt", "user_id"],
-      },
-      limit, // ใช้ limit ที่รับมา
+      attributes: { exclude: ["createdAt", "updatedAt", "user_id"] },
+      limit,
     });
 
-    // ระวัง: โค้ดเดิมอ้าง history.ingredients (ผิด scope)
-    // ต้องคำนวณต่อ "รายการ" แยกกัน
-    return historyRows.map((entry) => {
-  const foodName =
-    entry.custom_food_name ||
-    (entry.food && entry.food.name) ||
-    null;
+    return rows.map((entry) => {
+      const ingredients = entry.custom_ingredients; // ถ้ามี getter จะได้เป็น object แล้ว
+      const servingSize = computeServingSize(ingredients, { decimals: 2 });
+      const foodName =
+        entry.custom_food_name ||
+        (entry.food && entry.food.name) ||
+        null;
 
-  // ฟอร์แมต consumed_at ให้เหลือ YYYY-MM-DD
-  const consumedDate = entry.consumed_at
-    ? entry.consumed_at.toISOString().split("T")[0]
-    : null;
-
-  return {
-    id: entry.id,
-    food_id: entry.food_id,
-    food_name: foodName,
-    serving_size: computeServingSize(entry.custom_ingredients, { decimals: 2 }),
-    consumed_at: consumedDate,   // 👈 เปลี่ยนตรงนี้
-    custom_ingredients: entry.custom_ingredients,
-    calculated_calories: entry.calculated_calories,
-    calculated_fat: entry.calculated_fat,
-    calculated_protein: entry.calculated_protein,
-    calculated_carbohydrates: entry.calculated_carbohydrates,
-    notes: entry.notes,
-  };
-});
-
+      return {
+        id: entry.id,
+        food_id: entry.food_id,
+        food_name: foodName,
+        serving_size: servingSize,
+        // 👇 แสดงเฉพาะวันที่ (YYYY-MM-DD) ตามเวลาไทย
+        consumed_at: formatYYYYMMDD_BKK(entry.consumed_at),
+        custom_ingredients: entry.custom_ingredients,
+        calculated_calories: entry.calculated_calories,
+        calculated_fat: entry.calculated_fat,
+        calculated_protein: entry.calculated_protein,
+        calculated_carbohydrates: entry.calculated_carbohydrates,
+        notes: entry.notes,
+      };
+    });
   } catch (error) {
-    console.error(
-      `Error in getAllEatingHistoryByUserId service for user ${userId}:`,
-      error
-    );
+    console.error(`Error in getAllEatingHistoryByUserId service for user ${userId}:`, error);
     throw error;
   }
 };
