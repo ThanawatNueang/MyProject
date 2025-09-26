@@ -1,12 +1,13 @@
-// src/API/eatingHistory.js  (หรือชื่อไฟล์เดิมของคุณ)
+// src/API/eatingHistory.js
 
 export const BASE_URL =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
     import.meta.env.VITE_API_BASE_URL) ||
-  "https://caloriepaws-node.azurewebsites.net"; // ✅ ค่า default โปรดักชัน (ไม่ใช้พอร์ต)
+  "https://caloriepaws-node.azurewebsites.net";
 
 export const TOKEN_KEY = "userToken";
+
 
 // -------------------- Helpers --------------------
 
@@ -22,7 +23,7 @@ function handleUnauthorized() {
 }
 
 async function handleJsonResponse(res, context = "request") {
-  // 401: ล้าง token และโยน error
+  
   if (res.status === 401) {
     const txt = await res.text().catch(() => "");
     console.error(`❌ ${context} 401:`, txt);
@@ -30,7 +31,6 @@ async function handleJsonResponse(res, context = "request") {
     throw new Error(`Unauthorized (401): ${txt || "Invalid token"}`);
   }
 
-  // บางตัวตอบ 204 No Content
   if (res.status === 204) return null;
 
   const text = await res.text().catch(() => "");
@@ -39,7 +39,6 @@ async function handleJsonResponse(res, context = "request") {
     throw new Error(`${context} failed: ${res.status} ${text}`);
   }
 
-  // คืน JSON ถ้า parse ได้ ไม่งั้นคืน text
   try {
     const json = text ? JSON.parse(text) : null;
     return json && Object.prototype.hasOwnProperty.call(json, "data")
@@ -155,7 +154,7 @@ export async function eatingHistory(startDate, endDate) {
 
   const res = await fetch(url, {
     method: "GET",
-    headers: { ...getAuthHeader() }, // GET ไม่จำเป็นต้องใส่ Content-Type
+    headers: { ...getAuthHeader() },
     cache: "no-store",
   });
 
@@ -164,10 +163,36 @@ export async function eatingHistory(startDate, endDate) {
   return Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
 }
 
+export async function allEatingHistory(date, pLimit = 0) {
+  const base = 10;
+  // รองรับทั้ง string/number, กัน NaN, และไม่ให้ติดลบ
+  const extra = Number.isFinite(Number(pLimit)) ? Number(pLimit) : 0;
+  const limit = Math.max(1, base + extra);
+
+  const params = new URLSearchParams();
+  if (date) params.set("date", date);
+  params.set("limit", String(limit));
+  const url =
+    params.toString()
+      ? `${BASE_URL}/api/eatinghistory/all?limit=${limit}?date=${date}`
+      : `${BASE_URL}/api/eatinghistory/all?limit=${limit}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { ...getAuthHeader() }, // GET ไม่จำเป็นต้องใส่ Content-Type
+    cache: "no-store",
+  });
+  
+  // คาดหวังหลังบ้านกลับ { data: [...] }
+  const data = await handleJsonResponse(res, "GET /api/eatinghistory");
+  return Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+}
+
 /** Helper: ดึง 7 วันย้อนหลัง */
 export async function fetchLast7Days() {
   const { startDate, endDate } = getLast7DaysRange();
-  let data = await eatingHistory(startDate, endDate);
+  let data = await allEatingHistory();
+  
   if (!Array.isArray(data) || data.length === 0) {
     try {
       data = await eatingHistory(); // fallback
@@ -181,6 +206,51 @@ export async function fetchLast7Days() {
   normalized.sort((a, b) => getT(b) - getT(a));
   return normalized;
 }
+
+/** Helper: ดึงทุกวันแบบลิมิต */
+export async function allEatingHistoryPage({ date, limit = 10, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (Number.isFinite(limit) && limit > 0) params.set("limit", String(limit));
+  if (Number.isFinite(offset) && offset >= 0) params.set("offset", String(offset));
+  if (date) params.set("date", date);
+
+  const url = `${BASE_URL}/api/eatinghistory/all?${params.toString()}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: { ...getAuthHeader() },
+    cache: "no-store",
+  });
+  // ⬅️ รับ “ดิบ” กลับมา (อาจเป็น array หรือ object)
+  const json = await handleJsonResponse(res, "GET /api/eatinghistory/all", { unwrapData: false });
+  
+  // ✅ ถ้าเป็นอาร์เรย์ → แมปเป็น data ตรง ๆ
+  if (Array.isArray(json)) {
+    return {
+      message: "",
+      data: json,          // ได้ 10 รายการตามที่เห็นใน log
+      hasMore: false,      // ยังไม่รู้ ต้องให้หลังบ้านส่งมาถึงจะรู้จริง
+      nextOffset: null,    // เช่นกัน
+      limit,
+      offset,
+      remaining: null,
+      total: null,
+    };
+  }
+
+  // ✅ ถ้าเป็นอ็อบเจ็กต์แบบใหม่ → ใช้ฟิลด์ที่ส่งมา
+  return {
+    message: json?.message ?? "",
+    data: Array.isArray(json?.data) ? json.data : [],
+    hasMore: !!json?.hasMore,
+    nextOffset: Number.isFinite(json?.nextOffset) ? json.nextOffset : null,
+    limit: Number.isFinite(json?.limit) ? json.limit : limit,
+    offset: Number.isFinite(json?.offset) ? json.offset : offset,
+    remaining: Number.isFinite(json?.remaining) ? json.remaining : null,
+    total: Number.isFinite(json?.total) ? json.total : null,
+  };
+}
+
 
 /** POST /api/eatinghistory */
 export async function createEatingHistory(payload) {

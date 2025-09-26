@@ -280,7 +280,7 @@ export const getAllEatingHistoryByUserId = async (userId, opts = {}) => {
     notes: entry.notes,
   }));
 
-  return { data, hasMore, nextOffset: offset + data.length };
+  return { data, hasMore, nextOffset: offset + data.length ,limit , offset};
 };
 
 /**

@@ -1,3 +1,4 @@
+// Aside.jsx
 import {
   ResponsiveContainer,
   BarChart,
@@ -21,6 +22,7 @@ import {
   fetchLast7Days,
   updateEatingHistory,
   deleteEatingHistory,
+  allEatingHistoryPage,
 } from "../API/eatingHistory";
 import {
   suggestIngredients,
@@ -32,34 +34,52 @@ const MACRO_COLORS = { protein: "#606B43", carbs: "#909C6F", fat: "#414B26" };
 const GRID = "#E7E3D8";
 const AXIS = "#6F6A5B";
 
-/* ---------- Normalize helpers ---------- */
+/* ---------- Normalize helpers (fixed) ---------- */
 const normalizeMeal = (m, i) => {
   const customName = m?.custom_food_name ?? m?.customFoodName ?? null;
+  const displayName =
+    (typeof customName === "string" && customName.trim()) ||
+    m?.food_name ||
+    m?.name ||
+    "Unknown food";
+
+  const calories =
+    Number(m?.calculated_calories ?? m?.calories ?? m?.nutrition?.calories) ||
+    0;
+  const protein =
+    Number(m?.calculated_protein ?? m?.protein ?? m?.nutrition?.protein) || 0;
+  const carbs =
+    Number(
+      m?.calculated_carbohydrates ??
+        m?.carbs ??
+        m?.nutrition?.carbohydrates ??
+        m?.nutrition?.carbs
+    ) || 0;
+  const fat = Number(m?.calculated_fat ?? m?.fat ?? m?.nutrition?.fat) || 0;
+
+  const consumedAt = m?.consumedAt ?? m?.consumed_at ?? m?.date ?? null;
+
+  const customIngredients = Array.isArray(m?.custom_ingredients)
+    ? m.custom_ingredients
+    : Array.isArray(m?.customIngredients)
+    ? m.customIngredients
+    : [];
 
   return {
     ...m,
     id: m?.id ?? m?.foodId ?? String(i),
-    // เก็บค่าเดิมไว้ทั้งคู่
-    name: m?.name ?? "Unknown food",
+    name: m?.food_name ?? m?.name ?? "Unknown food",
     custom_food_name: customName,
-
-    // ชื่อที่ใช้โชว์บน UI เสมอ (custom ก่อน ถ้าไม่มีค่อย fallback เป็น name)
-    displayName:
-      (typeof customName === "string" && customName.trim()) ||
-      m?.name ||
-      "Unknown food",
-
-    calories: Number(m?.calories ?? m?.nutrition?.calories) || 0,
-    protein: Number(m?.protein ?? m?.nutrition?.protein) || 0,
-    carbs:
-      Number(m?.carbs ?? m?.nutrition?.carbs ?? m?.nutrition?.carbohydrates) ||
-      0,
-    fat: Number(m?.fat ?? m?.nutrition?.fat) || 0,
+    displayName,
+    calories,
+    protein,
+    carbs,
+    fat,
     notes: m?.notes ?? "",
-    consumedAt: m?.consumedAt ?? m?.consumed_at ?? m?.date ?? null,
-    customIngredients: Array.isArray(m?.customIngredients)
-      ? m.customIngredients
-      : [],
+    consumedAt,
+    consumed_at: consumedAt,
+    customIngredients,
+    serving_size: m?.serving_size ?? m?.servingSize ?? null,
   };
 };
 
@@ -140,8 +160,6 @@ async function ensurePer100g(it) {
 }
 
 /* ---------- Date helpers (ล็อกเป็น local string) ---------- */
-
-// ==== Local YYYY-MM-DD (กัน off-by-one จาก timezone) ====
 const toYMDLocal = (d) => {
   const x = new Date(d);
   const y = x.getFullYear();
@@ -149,8 +167,6 @@ const toYMDLocal = (d) => {
   const day = String(x.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 };
-
-// วันนี้ (ตามเวลาบนเครื่องผู้ใช้)
 const getTodayYMD = () => toYMDLocal(new Date());
 
 const toYMD = (v) => {
@@ -161,7 +177,7 @@ const toYMD = (v) => {
     return isNaN(d) ? null : d.toISOString().slice(0, 10);
   }
   if (typeof v === "string") {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v; // keep as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
     const d1 = new Date(v);
     if (!isNaN(d1)) return d1.toISOString().slice(0, 10);
     const m = v.match(/(\d{2})\/(\d{2})\/(\d{4})/);
@@ -176,14 +192,12 @@ const toYMD = (v) => {
   return isNaN(d) ? null : d.toISOString().slice(0, 10);
 };
 
-// ใช้ local แทนในตัวแปลงวันที่ของ item
 const getItemDateYMD = (m) => {
   const v = m?.consumedAt ?? m?.consumed_at ?? m?.date ?? null;
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   return toYMDLocal(v);
 };
 
-// display ในลิสต์
 const displayDate = (v) => {
   if (!v) return "";
   if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
@@ -206,19 +220,32 @@ export const Aside = () => {
   const [isListOpen, setIsListOpen] = useState(false);
   const [allMeals, setAllMeals] = useState([]);
   const [todayMeals, setTodayMeals] = useState([]);
-  //เพิ่มโค้ด 2 ตัวอแปรนี้ลงไปด้วย
-  const [isMealOpen, setIsMealOpen] = useState([]);
+  const [isMealOpen, setIsMealOpen] = useState(null);
   const ingredientRefs = useRef([]);
 
-  // กราฟย้อนหลัง 7 วัน
+  // 7-day chart
   const [macro7d, setMacro7d] = useState([]);
 
   // auto complete
   const [suggustions, setSuggustions] = useState([]);
   const [activeSugguestIndex, setActiveSugguestIndex] = useState(null);
 
-  // meal ปัจจุบันที่กำลังแก้ (อาจมาจาก Food Daily หรือจากลิสต์)
+  // edit state
   const [editTarget, setEditTarget] = useState(null);
+
+  // ===== Pagination states (All Saved Meals) =====
+  const PAGE = 10;
+  const [modalMeals, setModalMeals] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingPage, setLoadingPage] = useState(false);
+  const [totalModal, setTotalModal] = useState(null);
+
+  // ====== NEW: Filter controls ======
+  // ค่าเริ่มต้น: "ไม่ใช้ปฏิทิน" → เปิดมาแสดงทั้งหมด (แบบลิมิต)
+  const [useDateFilter, setUseDateFilter] = useState(false);
+  const [filterDate, setFilterDate] = useState(getTodayYMD()); // เลือกวันไว้ แต่ไม่ใช้จนกว่าจะติ๊ก
 
   const fetchIngredient = async (keyword) => {
     const kw = String(keyword || "").trim();
@@ -228,6 +255,29 @@ export const Aside = () => {
       return Array.isArray(res) ? res : [];
     } catch {
       return [];
+    }
+  };
+
+  const refreshModalFirstPage = async () => {
+    if (!isListOpen) return;
+    setLoadingPage(true);
+    try {
+      const page = await allEatingHistoryPage({
+        limit: PAGE,
+        offset: 0,
+        date: useDateFilter ? filterDate : undefined, // 👈 ใช้วันเฉพาะเมื่อเช็ค
+      });
+      const normalized = (Array.isArray(page.data) ? page.data : []).map(
+        normalizeMeal
+      );
+
+      setModalMeals(normalized);
+      setVisibleCount(normalized.length);
+      setNextOffset(page.nextOffset ?? normalized.length);
+      setHasMore(page.hasMore ?? normalized.length === PAGE);
+      setTotalModal(page.total ?? null);
+    } finally {
+      setLoadingPage(false);
     }
   };
 
@@ -264,7 +314,6 @@ export const Aside = () => {
     let list = await fetchNormalized();
     if (list.length === 0) list = readLocalHistory().map(normalizeMeal);
 
-    // sort ใหม่ล่าสุดอยู่บน
     list.sort((a, b) => {
       const A = getItemDateYMD(a) || "";
       const B = getItemDateYMD(b) || "";
@@ -273,7 +322,6 @@ export const Aside = () => {
 
     setAllMeals(list);
 
-    // ✅ กรองเฉพาะวันนี้
     const today = getTodayYMD();
     setTodayMeals(list.filter((m) => getItemDateYMD(m) === today));
 
@@ -294,6 +342,7 @@ export const Aside = () => {
       const onUpdated = async () => {
         const l2 = await loadAndRender();
         setAllMeals(l2);
+        await refreshModalFirstPage(); // ถ้า modal เปิดอยู่จะรีหน้าแรกอัตโนมัติ
       };
       window.addEventListener("history:updated", onUpdated);
       return () => window.removeEventListener("history:updated", onUpdated);
@@ -317,19 +366,128 @@ export const Aside = () => {
   };
 
   const openList = async () => {
-    const data = await fetchNormalized();
-    setAllMeals(data);
     setIsListOpen(true);
+    setLoadingPage(true);
+    try {
+      const page = await allEatingHistoryPage({
+        limit: PAGE,
+        offset: 0,
+        date: useDateFilter ? filterDate : undefined, // 👈 ตามเช็คบ็อกซ์
+      });
+      const normalized = (Array.isArray(page.data) ? page.data : []).map(
+        normalizeMeal
+      );
+
+      setModalMeals(normalized);
+      setVisibleCount(normalized.length);
+      setNextOffset(page.nextOffset ?? normalized.length);
+      setHasMore(page.hasMore ?? normalized.length === PAGE);
+      setTotalModal(page.total ?? null);
+
+      setAllMeals(normalized);
+    } finally {
+      setLoadingPage(false);
+    }
   };
   const closeList = () => setIsListOpen(false);
+
+  // toggle ใช้ปฏิทิน → รีหน้าแรกแบบ real-time
+  const onToggleUseDate = async (checked) => {
+    setUseDateFilter(checked);
+    if (isListOpen) {
+      setLoadingPage(true);
+      try {
+        const page = await allEatingHistoryPage({
+          limit: PAGE,
+          offset: 0,
+          date: checked ? filterDate : undefined,
+        });
+        const normalized = (Array.isArray(page.data) ? page.data : []).map(
+          normalizeMeal
+        );
+        setModalMeals(normalized);
+        setVisibleCount(normalized.length);
+        setNextOffset(page.nextOffset ?? normalized.length);
+        setHasMore(page.hasMore ?? normalized.length === PAGE);
+        setTotalModal(page.total ?? null);
+      } finally {
+        setLoadingPage(false);
+      }
+    }
+  };
+
+  // เปลี่ยนวันที่ (ใช้เฉพาะเมื่อ useDateFilter = true)
+  const onChangeFilterDate = async (v) => {
+    setFilterDate(v || getTodayYMD());
+    if (!useDateFilter) return; // ถ้ายังไม่เช็ค ก็ไม่ต้องรีโหลด
+    if (isListOpen) {
+      setLoadingPage(true);
+      try {
+        const page = await allEatingHistoryPage({
+          limit: PAGE,
+          offset: 0,
+          date: v || getTodayYMD(),
+        });
+        const normalized = (Array.isArray(page.data) ? page.data : []).map(
+          normalizeMeal
+        );
+
+        setModalMeals(normalized);
+        setVisibleCount(normalized.length);
+        setNextOffset(page.nextOffset ?? normalized.length);
+        setHasMore(page.hasMore ?? normalized.length === PAGE);
+        setTotalModal(page.total ?? null);
+      } finally {
+        setLoadingPage(false);
+      }
+    }
+  };
+
+  const seeMoreModal = async () => {
+    // ถ้าของใน state ยังโชว์ไม่หมด → ขยายก่อน
+    if (visibleCount < modalMeals.length) {
+      setVisibleCount((prev) => Math.min(prev + PAGE, modalMeals.length));
+      return;
+    }
+    // โชว์ครบแล้ว → ยิง API
+    setLoadingPage(true);
+    try {
+      const page = await allEatingHistoryPage({
+        limit: PAGE,
+        offset: nextOffset,
+        date: useDateFilter ? filterDate : undefined,
+      });
+      const normalized = (Array.isArray(page.data) ? page.data : []).map(
+        normalizeMeal
+      );
+
+      if (normalized.length === 0) {
+        setHasMore(false);
+        return;
+      }
+
+      setModalMeals((prev) => [...prev, ...normalized]);
+      setVisibleCount((prev) => prev + normalized.length);
+      setNextOffset((prev) => page.nextOffset ?? prev + normalized.length);
+      setHasMore(page.hasMore ?? normalized.length === PAGE);
+      if (page.total != null) setTotalModal(page.total);
+    } finally {
+      setLoadingPage(false);
+    }
+  };
+
+  const seeLessModal = () => {
+    setVisibleCount((prev) => Math.max(PAGE, prev - PAGE));
+  };
 
   /* ---------- Actions in modal ---------- */
   const deleteMeal = async (id) => {
     if (!confirm("Delete this item?")) return;
     await deleteEatingHistory(id);
     notifyHistoryUpdated();
-    const list = await loadAndRender(); // จะอัปเดต todayMeals ให้อัตโนมัติ
+    const list = await loadAndRender();
     setAllMeals(list);
+    await refreshModalFirstPage();
   };
 
   const setAsLatest = (id) => {
@@ -338,7 +496,7 @@ export const Aside = () => {
     setIsListOpen(false);
   };
 
-  /* ---------- Edit form (reusable for any meal) ---------- */
+  /* ---------- Edit form ---------- */
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -352,7 +510,6 @@ export const Aside = () => {
     consumedAt: "",
   });
 
-  // เปิดฟอร์มแก้ไขเสมอใน "โมดัล" (เรียกได้ทั้งจาก Food Daily และจากลิสต์)
   const openEdit = (meal = latest) => {
     if (!meal) return;
     setForm({
@@ -370,7 +527,7 @@ export const Aside = () => {
     });
     setEditTarget(meal);
     setIsEditing(true);
-    setIsListOpen(true); // ✅ เปิดโมดัล
+    setIsListOpen(true);
   };
 
   const openEditFromList = (m) => openEdit(m);
@@ -379,7 +536,15 @@ export const Aside = () => {
     setIsSaving(true);
     if (!editTarget) return;
 
-    // 1) clean input
+    const setCI = (updater) =>
+      setForm((f) => ({
+        ...f,
+        customIngredients:
+          typeof updater === "function"
+            ? updater(f.customIngredients || [])
+            : updater,
+      }));
+
     const cleanedIngredients = (form.customIngredients || [])
       .map((it) => ({
         id: String(it.id ?? "").trim(),
@@ -393,7 +558,6 @@ export const Aside = () => {
       }))
       .filter((it) => it.name.length > 0 && (it.quantity || 0) > 0);
 
-    // 2) per100g parallel
     const rows = await Promise.all(
       cleanedIngredients.map(async (it, idx) => {
         const per = await ensurePer100g(it);
@@ -410,7 +574,6 @@ export const Aside = () => {
       })
     );
 
-    // 3) sum
     const sum = rows.reduce(
       (acc, r) => ({
         cal: acc.cal + r.cals,
@@ -421,7 +584,6 @@ export const Aside = () => {
       { cal: 0, p: 0, c: 0, f: 0 }
     );
 
-    // 4) add per100g back + cache
     rows.forEach(({ per, idx }) => {
       cleanedIngredients[idx] = { ...cleanedIngredients[idx], ...per };
       const id = cleanedIngredients[idx].id;
@@ -430,7 +592,7 @@ export const Aside = () => {
 
     const round1 = (n) => Math.round(n * 10) / 10;
     const newDateStr = form.consumedAt || null;
-    // 5) optimistic: update item in allMeals
+
     const updatedItem = {
       ...editTarget,
       name: (form.name || "").trim(),
@@ -448,7 +610,6 @@ export const Aside = () => {
       m.id === editTarget.id ? updatedItem : m
     );
 
-    // resort by date
     nextAll.sort((a, b) => {
       const A = getItemDateYMD(a) || "";
       const B = getItemDateYMD(b) || "";
@@ -457,7 +618,6 @@ export const Aside = () => {
 
     setAllMeals(nextAll);
 
-    // sync latest
     if (latest && latest.id === editTarget.id) {
       setLatest(updatedItem);
     } else {
@@ -466,7 +626,6 @@ export const Aside = () => {
 
     computeMacro7d(nextAll);
 
-    // 6) ส่งจริง
     const patch = {
       id: (form.id || editTarget.id || "").trim(),
       custom_food_name: updatedItem.name,
@@ -486,6 +645,7 @@ export const Aside = () => {
     } finally {
       const list = await loadAndRender();
       setAllMeals(list);
+      await refreshModalFirstPage();
       setIsEditing(false);
       setIsSaving(false);
       setEditTarget(null);
@@ -501,35 +661,6 @@ export const Aside = () => {
     setAllMeals(list);
   };
 
-  // ---------- helpers ของ customIngredients ----------
-  const setCI = (updater) =>
-    setForm((f) => ({
-      ...f,
-      customIngredients:
-        typeof updater === "function"
-          ? updater(f.customIngredients || [])
-          : updater,
-    }));
-  const addIngredientRow = () => {
-    setCI((arr) => [...arr, { name: "", quantity: 0, unit: "g" }]);
-
-    // scroll หลังจาก DOM update
-    setTimeout(() => {
-      const lastEl = ingredientRefs.current[ingredientRefs.current.length - 1];
-      if (lastEl) {
-        lastEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    }, 50);
-  };
-
-  const removeIngredientRow = (idx) =>
-    setCI((arr) => arr.filter((_, i) => i !== idx));
-  const updateIngredientField = (idx, field, value) =>
-    setCI((arr) =>
-      arr.map((it, i) => (i === idx ? { ...it, [field]: value } : it))
-    );
-
-  // donut data (ยังไม่ได้ใช้)
   const ringData = useMemo(
     () => [
       { name: "Protein", value: Number(nutrition.protein || 0) },
@@ -539,7 +670,16 @@ export const Aside = () => {
     [nutrition]
   );
 
-  //เพิ่มโค้ดนี้ขึ้นมาด้วย
+  const shiftFilterDate = async (deltaDays) => {
+    const base = filterDate ? new Date(filterDate) : new Date();
+    const next = new Date(base);
+    next.setDate(base.getDate() + deltaDays);
+    const y = next.getFullYear();
+    const m = String(next.getMonth() + 1).padStart(2, "0");
+    const d = String(next.getDate()).padStart(2, "0");
+    await onChangeFilterDate(`${y}-${m}-${d}`);
+  };
+
   const fmtG = (n) =>
     `${Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })} g`;
 
@@ -654,9 +794,7 @@ export const Aside = () => {
                 <span
                   className="font-semibold"
                   style={{ color: MACRO_COLORS.carbs }}
-                >
-                  {/* {fmtG(todayMacros.carbs)} */}
-                </span>
+                />
               </span>
               <span className="inline-flex items-center gap-2">
                 <i
@@ -667,9 +805,7 @@ export const Aside = () => {
                 <span
                   className="font-semibold"
                   style={{ color: MACRO_COLORS.fat }}
-                >
-                  {/* {fmtG(todayMacros.fat)} */}
-                </span>
+                />
               </span>
               <span className="inline-flex items-center gap-2">
                 <i
@@ -680,9 +816,7 @@ export const Aside = () => {
                 <span
                   className="font-semibold"
                   style={{ color: MACRO_COLORS.protein }}
-                >
-                  {/* {fmtG(todayMacros.protein)} */}
-                </span>
+                />
               </span>
             </div>
           </div>
@@ -743,8 +877,7 @@ export const Aside = () => {
                         <MdDeleteOutline size={13} /> Delete
                       </button>
                       <div
-                        className="flex items-center gap-1 rounded-full px-2 py-1 bg-black text-white cursor-pointer
-                        transition-colors"
+                        className="flex items-center gap-1 rounded-full px-2 py-1 bg-black text-white cursor-pointer transition-colors"
                         onClick={() => openMealsToggle(meal.id)}
                         aria-expanded={isMealOpen === meal.id}
                         aria-controls={`meal-details-${meal.id}`}
@@ -770,14 +903,11 @@ export const Aside = () => {
                   {isMealOpen === meal.id && (
                     <div
                       id={`meal-details-${meal.id}`}
-                      className={`
-    overflow-hidden transition-all duration-300
-    ${
-      isMealOpen === meal.id
-        ? "max-h-[600px] opacity-100 mt-3"
-        : "max-h-0 opacity-0"
-    }
-  `}
+                      className={`overflow-hidden transition-all duration-300 ${
+                        isMealOpen === meal.id
+                          ? "max-h-[600px] opacity-100 mt-3"
+                          : "max-h-0 opacity-0"
+                      }`}
                     >
                       {meal.notes && (
                         <p className="text-[11px] md:text-[12px] Fahkwang py-4 line-clamp-3 md:line-clamp-2">
@@ -871,35 +1001,97 @@ export const Aside = () => {
               </button>
             </div>
 
+            {/* ===== Filter toolbar: Checkbox + Date + Today ===== */}
+            {!isEditing && (
+              <div className="mt-3 mb-2 flex flex-col lg:flex-row lg:items-center gap-3">
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={useDateFilter}
+                    onChange={(e) => onToggleUseDate(e.target.checked)}
+                  />
+                  ใช้วันจากปฏิทิน
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => onChangeFilterDate(e.target.value)}
+                    className={`text-sm px-3 py-1.5 rounded-md border outline-none ${
+                      useDateFilter ? "" : "opacity-50 pointer-events-none"
+                    }`}
+                  />
+                  <button
+                    className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white"
+                    onClick={() => shiftFilterDate(-1)}
+                    title="Previous day"
+                  >
+                    ‹ Prev
+                  </button>
+                  <button
+                    className={`text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white ${
+                      useDateFilter ? "" : "opacity-50 pointer-events-none"
+                    }`}
+                    onClick={() => onChangeFilterDate(getTodayYMD())}
+                    title="Today"
+                  >
+                    Today
+                  </button>
+                  <button
+                    className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white"
+                    onClick={() => shiftFilterDate(1)}
+                    title="Next day"
+                  >
+                    Next ›
+                  </button>
+                </div>
+
+                <div className="text-xs text-[#666]">
+                  {useDateFilter
+                    ? `Showing entries for ${filterDate}`
+                    : "Showing latest entries"}
+                </div>
+              </div>
+            )}
+
             {/* Body */}
-            <div className="mt-3 overflow-y-auto" style={{ maxHeight: "65vh" }}>
+            <div className="mt-1 overflow-y-auto" style={{ maxHeight: "60vh" }}>
               {!isEditing ? (
                 // ===== LIST VIEW =====
                 <>
-                  {allMeals.length === 0 ? (
+                  {modalMeals.length === 0 ? (
                     <div className="py-10 text-center text-sm text-[#666]">
-                      ยังไม่มีประวัติการกิน
+                      {loadingPage ? "Loading…" : "ยังไม่มีประวัติการกิน"}
                     </div>
                   ) : (
                     <ul className="divide-y">
-                      {allMeals.map((m) => (
-                        <li key={m.id} className="py-3 flex flex-col gap-2">
+                      {modalMeals.slice(0, visibleCount).map((m, i) => (
+                        <li
+                          key={m.id || `${m.name}-${i}`}
+                          className="py-3 flex flex-col gap-2"
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="font-medium truncate max-w-[55vw] lg:max-w-[420px]">
                                   {m.displayName ??
                                     m.custom_food_name ??
-                                    m.name}
+                                    m.name ??
+                                    "Unknown food"}
                                 </p>
                                 <span className="text-xs text-[#777]">
                                   {m.calories} Cal · P{m.protein} C{m.carbs} F
                                   {m.fat}
                                 </span>
                               </div>
-                              <p className="text-xs pt-2 text-[#999] line-clamp-2">
-                                {m.notes}
-                              </p>
+
+                              {m.notes && (
+                                <p className="text-xs pt-2 text-[#999] line-clamp-2">
+                                  {m.notes}
+                                </p>
+                              )}
+
                               {getItemDateYMD(m) && (
                                 <p className="text-[11px] pt-1 text-[#5c5c5c]">
                                   {displayDate(
@@ -912,7 +1104,7 @@ export const Aside = () => {
                             <div className="shrink-0 flex items-center gap-2">
                               <button
                                 className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white cursor-pointer"
-                                onClick={() => openEditFromList(m)} // ✅ เปิดฟอร์มในโมดัล
+                                onClick={() => openEditFromList(m)}
                                 title="Edit this meal"
                               >
                                 Edit
@@ -926,7 +1118,6 @@ export const Aside = () => {
                             </div>
                           </div>
 
-                          {/* วัตถุดิบทั้งหมดของมื้อนั้น */}
                           {Array.isArray(m.customIngredients) &&
                             m.customIngredients.length > 0 && (
                               <div className="bg-[#fafafa] border border-neutral-200 rounded-lg px-3 py-2">
@@ -934,8 +1125,8 @@ export const Aside = () => {
                                   Ingredients
                                 </div>
                                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-[#444]">
-                                  {m.customIngredients.map((it, i) => (
-                                    <li key={i}>
+                                  {m.customIngredients.map((it, idx) => (
+                                    <li key={idx}>
                                       • {it.name} — {it.quantity ?? 0}{" "}
                                       {it.unit ?? "-"}
                                     </li>
@@ -947,9 +1138,37 @@ export const Aside = () => {
                       ))}
                     </ul>
                   )}
+
+                  {/* ===== Pagination controls ===== */}
+                  <div className="flex items-center justify-between gap-2 mt-4">
+                    <div className="text-xs text-[#888]">
+                      {(() => {
+                        const shown = Math.min(visibleCount, modalMeals.length);
+                        if (totalModal != null) return `Showing ${shown} of ${totalModal}`;
+                        const suffix = hasMore ? `${modalMeals.length}+` : `${modalMeals.length}`;
+                        return `Showing ${shown} of ${suffix}`;
+                      })()}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white disabled:opacity-50"
+                        onClick={seeLessModal}
+                        disabled={visibleCount <= PAGE || loadingPage}
+                      >
+                        See less -10
+                      </button>
+                      <button
+                        className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white disabled:opacity-50"
+                        onClick={seeMoreModal}
+                        disabled={loadingPage}
+                      >
+                        {loadingPage ? "Loading…" : "See more +10"}
+                      </button>
+                    </div>
+                  </div>
                 </>
               ) : (
-                // ===== EDIT VIEW (ฟอร์มย้ายมาอยู่ที่นี่) =====
+                // ===== EDIT VIEW =====
                 <div className="mt-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <label className="text-sm">
@@ -1033,163 +1252,12 @@ export const Aside = () => {
                     </label>
                   </div>
 
-                  {/* Ingredients editor */}
-                  <div className="mt-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-[14px] font-semibold">Ingredients</h4>
-                      <button
-                        className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white cursor-pointer transition"
-                        onClick={addIngredientRow}
-                      >
-                        + Add ingredient
-                      </button>
-                    </div>
-
-                    {form.customIngredients.length === 0 ? (
-                      <div className="text-[12px] text-[#777]">
-                        No ingredients in this item yet.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {form.customIngredients.map((it, idx) => (
-                          <div
-                            key={idx}
-                            ref={(el) => (ingredientRefs.current[idx] = el)}
-                            className="grid grid-cols-12 gap-1 items-center bg-white/70 border border-neutral-200 rounded-xl p-1 overflow-visible"
-                          >
-                            {/* Name + Suggestion */}
-                            <div className="relative col-span-12 sm:col-span-5 min-w-0">
-                              <input
-                                className="w-full border border-neutral-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-                                placeholder="ชื่อวัตถุดิบ"
-                                value={it.name ?? ""}
-                                onChange={async (e) => {
-                                  const val = e.target.value;
-                                  updateIngredientField(idx, "name", val);
-                                  setActiveSugguestIndex(idx);
-                                  setSuggustions(await fetchIngredient(val));
-                                }}
-                                onFocus={() => setActiveSugguestIndex(idx)}
-                                onBlur={() =>
-                                  setTimeout(
-                                    () => setActiveSugguestIndex(null),
-                                    200
-                                  )
-                                }
-                              />
-                              {activeSugguestIndex === idx && (
-                                <div className="absolute left-0 top-full mt-1 w-full z-50 bg-white border rounded-lg shadow max-h-48 overflow-auto">
-                                  {suggustions.length > 0 ? (
-                                    suggustions.map((s, i) => (
-                                      <button
-                                        key={s.id || i}
-                                        type="button"
-                                        className="w-full text-left px-3 py-2 text-sm hover:bg-black hover:text-white"
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => {
-                                          updateIngredientField(
-                                            idx,
-                                            "id",
-                                            s.id || ""
-                                          );
-                                          updateIngredientField(
-                                            idx,
-                                            "name",
-                                            s.name || ""
-                                          );
-                                          if (s.nutrition) {
-                                            const per =
-                                              s.nutrition.per100g ||
-                                              s.nutrition;
-                                            updateIngredientField(
-                                              idx,
-                                              "calories_100g",
-                                              per.calories ??
-                                                per.calories_100g ??
-                                                0
-                                            );
-                                            updateIngredientField(
-                                              idx,
-                                              "protein_100g",
-                                              per.protein ??
-                                                per.protein_100g ??
-                                                0
-                                            );
-                                            updateIngredientField(
-                                              idx,
-                                              "carbs_100g",
-                                              per.carbs ??
-                                                per.carbs_100g ??
-                                                per.carbohydrates ??
-                                                0
-                                            );
-                                            updateIngredientField(
-                                              idx,
-                                              "fat_100g",
-                                              per.fat ?? per.fat_100g ?? 0
-                                            );
-                                          }
-                                          setSuggustions([]);
-                                          setActiveSugguestIndex(null);
-                                        }}
-                                      >
-                                        {s.name}
-                                      </button>
-                                    ))
-                                  ) : (
-                                    <div className="px-3 py-2 text-sm text-neutral-500">
-                                      ไม่พบผลลัพธ์
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Qty */}
-                            <input
-                              type="number"
-                              className="col-span-6 sm:col-span-3 min-w-0 w-full border border-neutral-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-black/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              placeholder="ปริมาณ"
-                              value={it.quantity ?? ""}
-                              onChange={(e) =>
-                                updateIngredientField(
-                                  idx,
-                                  "quantity",
-                                  e.target.value
-                                )
-                              }
-                            />
-
-                            {/* Unit */}
-                            <select
-                              className="col-span-4 sm:col-span-2 w-full border border-neutral-300 rounded-lg py-2 outline-none focus:ring-2 focus:ring-black/10"
-                              value={it.unit ?? "g"}
-                              onChange={(e) =>
-                                updateIngredientField(
-                                  idx,
-                                  "unit",
-                                  e.target.value
-                                )
-                              }
-                            >
-                              <option value="g">g</option>
-                              <option value="ml">ml</option>
-                            </select>
-
-                            <div className="col-span-2 sm:col-span-2 flex justify-end">
-                              <button
-                                className="text-xs px-3 py-2 rounded-lg border border-neutral-300 bg-white hover:bg-black hover:text-white transition"
-                                onClick={() => removeIngredientRow(idx)}
-                                title="Remove ingredient"
-                              >
-                                <MdDelete />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <IngredientsEditor
+                    form={form}
+                    setForm={setForm}
+                    fetchIngredient={fetchIngredient}
+                    ingredientRefs={ingredientRefs}
+                  />
 
                   <div className="flex justify-end gap-3 mt-6">
                     <button
@@ -1233,3 +1301,159 @@ export const Aside = () => {
     </div>
   );
 };
+
+// ===== Ingredients editor =====
+function IngredientsEditor({ form, setForm, fetchIngredient, ingredientRefs }) {
+  const [suggustions, setSuggustions] = useState([]);
+  const [activeSugguestIndex, setActiveSugguestIndex] = useState(null);
+
+  const setCI = (updater) =>
+    setForm((f) => ({
+      ...f,
+      customIngredients:
+        typeof updater === "function"
+          ? updater(f.customIngredients || [])
+          : updater,
+    }));
+
+  const addIngredientRow = () => {
+    setCI((arr) => [...arr, { name: "", quantity: 0, unit: "g" }]);
+    setTimeout(() => {
+      const lastEl = ingredientRefs.current[ingredientRefs.current.length - 1];
+      if (lastEl) {
+        lastEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }, 50);
+  };
+
+  const removeIngredientRow = (idx) =>
+    setCI((arr) => arr.filter((_, i) => i !== idx));
+
+  const updateIngredientField = (idx, field, value) =>
+    setCI((arr) => arr.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-[14px] font-semibold">Ingredients</h4>
+        <button
+          className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white cursor-pointer transition"
+          onClick={addIngredientRow}
+        >
+          + Add ingredient
+        </button>
+      </div>
+
+      {form.customIngredients.length === 0 ? (
+        <div className="text-[12px] text-[#777]">
+          No ingredients in this item yet.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {form.customIngredients.map((it, idx) => (
+            <div
+              key={idx}
+              ref={(el) => (ingredientRefs.current[idx] = el)}
+              className="grid grid-cols-12 gap-1 items-center bg-white/70 border border-neutral-200 rounded-xl p-1 overflow-visible"
+            >
+              {/* Name + Suggestion */}
+              <div className="relative col-span-12 sm:col-span-5 min-w-0">
+                <input
+                  className="w-full border border-neutral-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
+                  placeholder="ชื่อวัตถุดิบ"
+                  value={it.name ?? ""}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    updateIngredientField(idx, "name", val);
+                    setActiveSugguestIndex(idx);
+                    setSuggustions(await fetchIngredient(val));
+                  }}
+                  onFocus={() => setActiveSugguestIndex(idx)}
+                  onBlur={() => setTimeout(() => setActiveSugguestIndex(null), 200)}
+                />
+                {activeSugguestIndex === idx && (
+                  <div className="absolute left-0 top-full mt-1 w-full z-50 bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                    {suggustions.length > 0 ? (
+                      suggustions.map((s, i) => (
+                        <button
+                          key={s.id || i}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-black hover:text-white"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            updateIngredientField(idx, "id", s.id || "");
+                            updateIngredientField(idx, "name", s.name || "");
+                            if (s.nutrition) {
+                              const per = s.nutrition.per100g || s.nutrition;
+                              updateIngredientField(
+                                idx,
+                                "calories_100g",
+                                per.calories ?? per.calories_100g ?? 0
+                              );
+                              updateIngredientField(
+                                idx,
+                                "protein_100g",
+                                per.protein ?? per.protein_100g ?? 0
+                              );
+                              updateIngredientField(
+                                idx,
+                                "carbs_100g",
+                                per.carbs ?? per.carbs_100g ?? per.carbohydrates ?? 0
+                              );
+                              updateIngredientField(
+                                idx,
+                                "fat_100g",
+                                per.fat ?? per.fat_100g ?? 0
+                              );
+                            }
+                            setSuggustions([]);
+                            setActiveSugguestIndex(null);
+                          }}
+                        >
+                          {s.name}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-neutral-500">
+                        ไม่พบผลลัพธ์
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Qty */}
+              <input
+                type="number"
+                className="col-span-6 sm:col-span-3 min-w-0 w-full border border-neutral-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-black/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                placeholder="ปริมาณ"
+                value={it.quantity ?? ""}
+                onChange={(e) => updateIngredientField(idx, "quantity", e.target.value)}
+              />
+
+              {/* Unit */}
+              <select
+                className="col-span-4 sm:col-span-2 w-full border border-neutral-300 rounded-lg py-2 outline-none focus:ring-2 focus:ring-black/10"
+                value={it.unit ?? "g"}
+                onChange={(e) => updateIngredientField(idx, "unit", e.target.value)}
+              >
+                <option value="g">g</option>
+                <option value="ml">ml</option>
+              </select>
+
+              <div className="col-span-2 sm:col-span-2 flex justify-end">
+                <button
+                  className="text-xs px-3 py-2 rounded-lg border border-neutral-300 bg-white hover:bg-black hover:text-white transition"
+                  onClick={() => removeIngredientRow(idx)}
+                  title="Remove ingredient"
+                >
+                  <MdDelete />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

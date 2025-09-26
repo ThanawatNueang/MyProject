@@ -35,7 +35,6 @@ export async function userPreview() {
   }
 
   const response = await res.json();
-  console.log("userPreview:", response);
   return response;
 }
 
