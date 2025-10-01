@@ -48,17 +48,6 @@ const scaleMacro = (m, factor) => ({
   fat: (m?.fat || 0) * factor,
 });
 
-/* =========================
-   Auth helpers
-   ========================= */
-const getAuthToken = () =>
-  localStorage.getItem("userToken") ||            // <<— เพิ่มบรรทัดนี้เป็นอันดับแรก
-  localStorage.getItem("accessToken") ||
-  localStorage.getItem("token") ||
-  sessionStorage.getItem("accessToken") ||
-  sessionStorage.getItem("token") ||
-  null;
-
 export const Upload = ({ defaultQuery = "", onResults }) => {
   const [customIngredients, setCustomIngredients] = useState([]);
   const [totals, setTotals] = useState({
@@ -109,27 +98,6 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
   //เปลี่ยนชื่ออาหารกับเปลี่ยนปริมาณอาหาร
   const [editName, setEditName] = useState("");
   const [editQty, setEditQty] = useState("");
-
-  // --- สถานะล็อกอิน เพื่อควบคุมการแสดงปุ่ม Save ---
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-useEffect(() => {
-  const updateAuth = () => setIsLoggedIn(!!getAuthToken());
-  updateAuth();
-
-  window.addEventListener("auth:login", updateAuth);
-  window.addEventListener("auth:logout", updateAuth);
-  window.addEventListener("storage", (e) => {
-    if (["userToken","accessToken","token","user","auth:user"].includes(e.key)) {
-      updateAuth();
-    }
-  });
-
-  return () => {
-    window.removeEventListener("auth:login", updateAuth);
-    window.removeEventListener("auth:logout", updateAuth);
-  };
-}, []);
 
   const openFoodEdit = () => {
     setEditName(foodData?.name || "");
@@ -520,6 +488,12 @@ useEffect(() => {
     const current = customIngredients[editingIndex];
     let id = current?.id ?? null;
 
+    // ถ้าอยากอัปเดต per-unit ใหม่ทุกครั้งที่เปลี่ยนชื่อ → ดึง id แล้วค่อยเรียก API อีกที
+    if ((current?.name || "").toLowerCase() !== name.toLowerCase()) {
+      // ถ้ามีระบบค้นหา id จากชื่อ อาจเติมได้ที่นี่
+      // ตอนนี้ถ้าไม่มี id จะคงค่าเดิมไว้
+    }
+
     let detail = null;
     if (id) {
       try {
@@ -611,8 +585,8 @@ useEffect(() => {
   };
 
   const handleSaveMeal = async () => {
-    // กันพลาด: ถ้าไม่ได้ล็อกอิน ไม่ต้องทำอะไร (ปุ่มก็ถูกซ่อนไว้อยู่แล้ว)
-    if (!isLoggedIn) return;
+    console.log(editName);
+    console.log(foodData.name);
 
     if (!foodData || isSaving) return;
 
@@ -768,22 +742,19 @@ useEffect(() => {
                       <span className="hidden sm:inline text-sm">Edit</span>
                     </button>
 
-                    {/* แสดงปุ่ม Save เฉพาะเมื่อเข้าสู่ระบบแล้ว */}
-                    {isLoggedIn && (
-                      <button
-                        onClick={handleSaveMeal}
-                        disabled={isSaving}
-                        className="inline-flex items-center gap-2 cursor-pointer font-prompt rounded-full border border-zinc-400 px-3 py-1.5
+                    <button
+                      onClick={handleSaveMeal}
+                      disabled={isSaving}
+                      className="inline-flex items-center gap-2 cursor-pointer font-prompt rounded-full border border-zinc-400 px-3 py-1.5
                hover:bg-black hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Save"
-                        aria-label="Save"
-                      >
-                        <LuSave className="text-[18px]" />
-                        <span className="hidden sm:inline text-sm">
-                          {isSaving ? "Saving..." : "Save"}
-                        </span>
-                      </button>
-                    )}
+                      title="Save"
+                      aria-label="Save"
+                    >
+                      <LuSave className="text-[18px]" />
+                      <span className="hidden sm:inline text-sm">
+                        {isSaving ? "Saving..." : "Save"}
+                      </span>
+                    </button>
                   </div>
                 </div>
 
