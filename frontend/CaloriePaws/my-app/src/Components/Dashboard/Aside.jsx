@@ -34,6 +34,8 @@ const MACRO_COLORS = { protein: "#606B43", carbs: "#909C6F", fat: "#414B26" };
 const GRID = "#E7E3D8";
 const AXIS = "#6F6A5B";
 
+ const isMobile = useIsMobile();
+
 /* ---------- Normalize helpers (fixed) ---------- */
 const normalizeMeal = (m, i) => {
   const customName = m?.custom_food_name ?? m?.customFoodName ?? null;
