@@ -34,8 +34,6 @@ const MACRO_COLORS = { protein: "#606B43", carbs: "#909C6F", fat: "#414B26" };
 const GRID = "#E7E3D8";
 const AXIS = "#6F6A5B";
 
- const isMobile = useIsMobile();
-
 /* ---------- Normalize helpers (fixed) ---------- */
 const normalizeMeal = (m, i) => {
   const customName = m?.custom_food_name ?? m?.customFoodName ?? null;
@@ -53,9 +51,9 @@ const normalizeMeal = (m, i) => {
   const carbs =
     Number(
       m?.calculated_carbohydrates ??
-      m?.carbs ??
-      m?.nutrition?.carbohydrates ??
-      m?.nutrition?.carbs
+        m?.carbs ??
+        m?.nutrition?.carbohydrates ??
+        m?.nutrition?.carbs
     ) || 0;
   const fat = Number(m?.calculated_fat ?? m?.fat ?? m?.nutrition?.fat) || 0;
 
@@ -64,8 +62,8 @@ const normalizeMeal = (m, i) => {
   const customIngredients = Array.isArray(m?.custom_ingredients)
     ? m.custom_ingredients
     : Array.isArray(m?.customIngredients)
-      ? m.customIngredients
-      : [];
+    ? m.customIngredients
+    : [];
 
   return {
     ...m,
@@ -113,23 +111,23 @@ const pickPer100g = (obj = {}) => ({
   calories_100g:
     Number(
       obj.calories_100g ??
-      obj.caloriesPer100g ??
-      obj.calories_per_100g ??
-      obj.calories
+        obj.caloriesPer100g ??
+        obj.calories_per_100g ??
+        obj.calories
     ) || 0,
   protein_100g:
     Number(
       obj.protein_100g ??
-      obj.proteinPer100g ??
-      obj.protein_per_100g ??
-      obj.protein
+        obj.proteinPer100g ??
+        obj.protein_per_100g ??
+        obj.protein
     ) || 0,
   carbs_100g:
     Number(
       obj.carbs_100g ??
-      obj.carbsPer100g ??
-      obj.carbs_per_100g ??
-      obj.carbohydrates
+        obj.carbsPer100g ??
+        obj.carbs_per_100g ??
+        obj.carbohydrates
     ) || 0,
   fat_100g:
     Number(obj.fat_100g ?? obj.fatPer100g ?? obj.fat_per_100g ?? obj.fat) || 0,
@@ -337,7 +335,7 @@ export const Aside = () => {
       try {
         const resData = await nutritionGoal();
         setNutrition(resData.macronutrients);
-      } catch { }
+      } catch {}
       const list = await loadAndRender();
       setAllMeals(list);
 
@@ -691,32 +689,6 @@ export const Aside = () => {
     return macro7d[macro7d.length - 1];
   }, [macro7d]);
 
-  function useIsMobile() {
-    const [isMobile, setIsMobile] = useState(
-      typeof window !== "undefined"
-        ? window.matchMedia("(max-width: 639px)").matches
-        : false
-    );
-
-    useEffect(() => {
-      if (typeof window === "undefined") return;
-      const mq = window.matchMedia("(max-width: 639px)");
-      const onChange = (e) => setIsMobile(e.matches);
-
-      // API ใหม่
-      mq.addEventListener?.("change", onChange);
-      // fallback API เก่า (Safari/บางเบราว์เซอร์)
-      mq.addListener?.(onChange);
-
-      return () => {
-        mq.removeEventListener?.("change", onChange);
-        mq.removeListener?.(onChange);
-      };
-    }, []);
-
-    return isMobile;
-  }
-
   return (
     <div className="h-full min-w-0 flex flex-col overflow-x-hidden">
       <div className="bg-white shrink-0">
@@ -904,22 +876,19 @@ export const Aside = () => {
                       >
                         <MdDeleteOutline size={13} /> Delete
                       </button>
-
-                      {/* ปุ่มลูกศร: โชว์เฉพาะจอ ≥ sm */}
-                      {!isMobile && (
-                        <div
-                          className="flex items-center gap-1 rounded-full px-2 py-1 bg-black text-white cursor-pointer transition-colors"
-                          onClick={() => openMealsToggle(meal.id)}
-                          aria-expanded={isMealOpen === meal.id}
-                          aria-controls={`meal-details-${meal.id}`}
-                        >
-                          <RiArrowDropDownLine
-                            size={18}
-                            className={`transition-transform duration-300 ${isMealOpen === meal.id ? "rotate-180" : "rotate-0"
-                              }`}
-                          />
-                        </div>
-                      )}
+                      <div
+                        className="flex items-center gap-1 rounded-full px-2 py-1 bg-black text-white cursor-pointer transition-colors"
+                        onClick={() => openMealsToggle(meal.id)}
+                        aria-expanded={isMealOpen === meal.id}
+                        aria-controls={`meal-details-${meal.id}`}
+                      >
+                        <RiArrowDropDownLine
+                          size={18}
+                          className={`transition-transform duration-300 ${
+                            isMealOpen === meal.id ? "rotate-180" : "rotate-0"
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -931,29 +900,36 @@ export const Aside = () => {
                       {meal.calories} Cal
                     </div>
                   </div>
-                  {(isMobile || isMealOpen === meal.id) && (
+                  {isMealOpen === meal.id && (
                     <div
                       id={`meal-details-${meal.id}`}
-                      className={`overflow-hidden transition-all duration-300 ${isMobile
-                          ? "max-h-[9999px] opacity-100 mt-3" // มือถือ: เปิดค้าง
-                          : "max-h-[600px] opacity-100 mt-3"   // เดสก์ท็อป: เปิดเมื่อกด
-                        }`}
+                      className={`overflow-hidden transition-all duration-300 ${
+                        isMealOpen === meal.id
+                          ? "max-h-[600px] opacity-100 mt-3"
+                          : "max-h-0 opacity-0"
+                      }`}
                     >
                       {meal.notes && (
                         <p className="text-[11px] md:text-[12px] Fahkwang py-4 line-clamp-3 md:line-clamp-2">
                           {meal.notes}
                         </p>
                       )}
-                      {Array.isArray(meal.customIngredients) && meal.customIngredients.length > 0 && (
-                        <div className="mt-2">
-                          <div className="text-[12px] font-semibold mb-2">Ingredients</div>
-                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-[#444]">
-                            {meal.customIngredients.map((it, i) => (
-                              <li key={i}>• {it.name} — {it.quantity ?? 0} {it.unit ?? "-"}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                      {Array.isArray(meal.customIngredients) &&
+                        meal.customIngredients.length > 0 && (
+                          <div className="mt-2">
+                            <div className="text-[12px] font-semibold mb-2">
+                              Ingredients
+                            </div>
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[12px] text-[#444]">
+                              {meal.customIngredients.map((it, i) => (
+                                <li key={i}>
+                                  • {it.name} — {it.quantity ?? 0}{" "}
+                                  {it.unit ?? "-"}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                     </div>
                   )}
 
@@ -1042,8 +1018,9 @@ export const Aside = () => {
                     type="date"
                     value={filterDate}
                     onChange={(e) => onChangeFilterDate(e.target.value)}
-                    className={`text-sm px-3 py-1.5 rounded-md border outline-none ${useDateFilter ? "" : "opacity-50 pointer-events-none"
-                      }`}
+                    className={`text-sm px-3 py-1.5 rounded-md border outline-none ${
+                      useDateFilter ? "" : "opacity-50 pointer-events-none"
+                    }`}
                   />
                   <button
                     className="text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white"
@@ -1053,8 +1030,9 @@ export const Aside = () => {
                     ‹ Prev
                   </button>
                   <button
-                    className={`text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white ${useDateFilter ? "" : "opacity-50 pointer-events-none"
-                      }`}
+                    className={`text-xs px-3 py-1 rounded-full border hover:bg-black hover:text-white ${
+                      useDateFilter ? "" : "opacity-50 pointer-events-none"
+                    }`}
                     onClick={() => onChangeFilterDate(getTodayYMD())}
                     title="Today"
                   >
