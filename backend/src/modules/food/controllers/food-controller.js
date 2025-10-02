@@ -82,27 +82,32 @@ const dotnetResp = await fetch('https://caloriepaws-sea.azurewebsites.net/Detect
 
     const dotnetData = await dotnetResp.json();
 
-    // 2) ดึง className จากผล detect
-    const { results = [] } = dotnetData || {};
-    const names = [...new Set(results.map(r => r.className))];
-    const components = [...new Set(results.map(r => r.components))];
-    
+    // 2) ดึงผล detect ตรง ๆ
+const { results = [] } = dotnetData || {};
 
-    // 3) ค้นข้อมูลอาหารจาก service
-    const enriched = [];
-    for (const name of names) {
-      try {
-        const foodData = await foodService.getFoodByName(name,components);
-        enriched.push({ className: name, food: foodData || null });
-      } catch (err) {
-        // enriched.push({ className: name, food: null });
-      }
-    }
+// 3) ค้นข้อมูลอาหารจาก service
+const enriched = [];
+for (const r of results) {
+  try {
+    const foodData = await foodService.getFoodByName(r.className, r.components);
+    enriched.push({
+      className: r.className,
+      components: r.components,
+      food: foodData || null
+    });
+  } catch (err) {
+    enriched.push({
+      className: r.className,
+      components: r.components,
+      food: null
+    });
+  }
+}
 
-    // 4) ส่งผลลัพธ์กลับ
-    res.status(200).json({
-      success: true,
-      results: enriched
+// 4) ส่งผลลัพธ์กลับ
+res.status(200).json({
+  success: true,
+  results: enriched
     });
   } catch (error) {
     next(error);
