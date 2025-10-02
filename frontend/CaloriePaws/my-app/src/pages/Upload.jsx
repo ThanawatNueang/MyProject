@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { SlCloudUpload } from "react-icons/sl";
 import { BsFire } from "react-icons/bs";
 import { GiChickenLeg } from "react-icons/gi";
@@ -95,15 +95,32 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
   const inputRef = useRef(null);
   const [saving, setSaving] = useState(false);
 
-  //เปลี่ยนชื่ออาหารกับเปลี่ยนปริมาณอาหาร
+  // เปลี่ยนชื่อ/ปริมาณอาหาร
   const [editName, setEditName] = useState("");
   const [editQty, setEditQty] = useState("");
 
+  // ====== แสดงคำแนะนำ: 3 บรรทัด + ป๊อปอัปอ่านต่อ ======
+  const [suggestModalOpen, setSuggestModalOpen] = useState(false);
+  const rawSuggest = foodData?.serving_suggestions || defaultNotes;
+
+  const suggestionLines = useMemo(() => {
+    const txt = String(rawSuggest || "").trim();
+    if (!txt) return [];
+    // แยกตามบรรทัดก่อน ถ้าไม่มีบรรทัดให้แยกตามวรรคตอนทั่วไป
+    const lines =
+      txt.split(/\n+/).map((s) => s.trim()).filter(Boolean);
+    if (lines.length > 0) return lines;
+    return txt.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+  }, [rawSuggest]);
+
+  const previewLines = suggestionLines.slice(0, 3);
+
+  const ACCEPT_MIMES = ["image/jpeg", "image/png"];
+  const MAX_SIZE = 10 * 1024 * 1024;
+
   const openFoodEdit = () => {
     setEditName(foodData?.name || "");
-    const m = String(foodData?.serving_size || "").match(
-      /(\d+(\.\d+)?)\s*(g|กรัม)/i
-    );
+    const m = String(foodData?.serving_size || "").match(/(\d+(\.\d+)?)\s*(g|กรัม)/i);
     setEditQty(m ? m[1] : "");
     setEditOpen(true);
     setTimeout(() => inputRef.current?.focus(), 0);
@@ -125,34 +142,16 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
   };
 
   useEffect(() => {
-    if (editOpen) document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [editOpen]);
-
-  const ACCEPT_MIMES = ["image/jpeg", "image/png"];
-  const MAX_SIZE = 10 * 1024 * 1024;
+    if (editOpen || suggestModalOpen) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [editOpen, suggestModalOpen]);
 
   useEffect(() => {
     uploadRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
-  useEffect(
-    () => () => {
-      if (abortRef.current) abortRef.current.abort();
-    },
-    []
-  );
-  useEffect(
-    () => () => {
-      if (preview) URL.revokeObjectURL(preview);
-    },
-    [preview]
-  );
-
-  useEffect(() => {
-    if (editOpen) setTimeout(() => inputRef.current?.focus(), 0);
-  }, [editOpen]);
+  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  useEffect(() => { if (editOpen) setTimeout(() => inputRef.current?.focus(), 0); }, [editOpen]);
 
   const handleClick = () => fileInputRef.current?.click();
 
@@ -165,14 +164,11 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
     const gramsPerUnit = UNIT_TO_GRAMS[unitRaw] ?? 1;
     const grams = gramsPerUnit * qty;
 
-    // กรณีมี per 100 g/ml
     if (it.per100g) {
       const per = normalizeMacro(it.per100g);
-      const factor = grams / 100;
-      return scaleMacro(per, factor);
+      return scaleMacro(per, grams / 100);
     }
 
-    // กรณีมีค่า per 1 g/ml (จาก API getIngredientById)
     const hasPerUnit =
       it.calories_per_unit != null ||
       it.protein_per_unit != null ||
@@ -186,7 +182,6 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
         carbohydrates: it.carbohydrates_per_unit,
         fat: it.fat_per_unit,
       });
-      // perUnit เป็น “ต่อ 1 หน่วยฐาน (g/ml)” → คูณด้วย grams ที่ผู้ใช้ใส่
       return scaleMacro(perUnit, grams);
     }
 
@@ -209,7 +204,6 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
     };
   };
 
-  // ทุกครั้งที่รายการเปลี่ยน -> คำนวณใหม่อัตโนมัติ
   useEffect(() => {
     setTotals(recalcTotals(customIngredients));
   }, [customIngredients]);
@@ -232,11 +226,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
       const item = res?.results?.[0]?.food;
       if (!item) throw new Error("No food data returned");
 
-      // วัตถุดิบจากรูปถือเป็น base (isCustom: false) แต่คำนวณรวมเหมือนกัน
-      const baseList = (item.ingredients || []).map((x) => ({
-        ...x,
-        isCustom: false,
-      }));
+      const baseList = (item.ingredients || []).map((x) => ({ ...x, isCustom: false }));
       setCustomIngredients(baseList);
 
       setFoodData({
@@ -250,13 +240,8 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
         className: res?.results?.[0]?.className,
         serving_size: item.serving_size,
         serving_suggestions: item.serving_suggestions,
-        nutrition: normalizeMacro(
-          item.calculated_nutrition || item.nutrition || {}
-        ),
-        consumedAt:
-          item.consumedAt ||
-          res?.results?.[0]?.consumedAt ||
-          new Date().toISOString(),
+        nutrition: normalizeMacro(item.calculated_nutrition || item.nutrition || {}),
+        consumedAt: item.consumedAt || res?.results?.[0]?.consumedAt || new Date().toISOString(),
       });
 
       setIsUpload(true);
@@ -276,33 +261,19 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
     processFile(file);
   };
 
-  const handleDragEnter = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isUpload) setIsDragging(true);
-  };
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isUpload) setIsDragging(true);
-  };
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+  const handleDragEnter = (e) => { e.preventDefault(); e.stopPropagation(); if (!isUpload) setIsDragging(true); };
+  const handleDragOver  = (e) => { e.preventDefault(); e.stopPropagation(); if (!isUpload) setIsDragging(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); };
+  const handleDrop      = (e) => {
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
     if (isUpload) return;
     const file = e.dataTransfer?.files?.[0];
     if (!file) return;
-    if (!ACCEPT_MIMES.includes(file.type)) {
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
       setErrorMsg("รองรับเฉพาะไฟล์ JPG/PNG เท่านั้น");
       return;
     }
-    if (file.size > MAX_SIZE) {
+    if (file.size > 10 * 1024 * 1024) {
       setErrorMsg("ไฟล์ใหญ่เกิน 10MB");
       return;
     }
@@ -363,7 +334,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
       onResults?.([]);
       return;
     }
-    if (abortRef.current) abortRef.current.abort();
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     setLoading(true);
@@ -418,16 +389,10 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
     const chosen = selectedSuggestRef.current;
     let id = chosen?.id ?? null;
 
-    if (!id) {
-      // ถ้าไม่มี id จาก dropdown ก็ปล่อยให้บันทึกได้ก่อน (จะไม่มี per-unit)
-      // หรือถ้าต้องการบังคับให้มี id เสมอ ให้ return alert ที่นี่
-    }
-
     let detail = null;
-
     if (id) {
       try {
-        detail = await apiGetIngredientById(id); // << per-unit จาก API จริง
+        detail = await apiGetIngredientById(id); // per-unit จาก API
       } catch (err) {
         console.warn("getIngredientById failed:", err);
       }
@@ -439,7 +404,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
       quantity: qty,
       unit,
       isCustom: true,
-      per100g: null, // เราใช้ per-unit เป็นหลักแล้ว
+      per100g: null,
       calories_per_unit: detail?.calories_per_unit ?? null,
       protein_per_unit: detail?.protein_per_unit ?? null,
       fat_per_unit: detail?.fat_per_unit ?? null,
@@ -472,9 +437,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
     setEditForm({
       name: it.name || "",
       quantity:
-        typeof it.quantity === "number"
-          ? it.quantity
-          : Number(it.quantity) || 0,
+        typeof it.quantity === "number" ? it.quantity : Number(it.quantity) || 0,
       unit: it.unit || "กรัม",
     });
   };
@@ -487,12 +450,6 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
 
     const current = customIngredients[editingIndex];
     let id = current?.id ?? null;
-
-    // ถ้าอยากอัปเดต per-unit ใหม่ทุกครั้งที่เปลี่ยนชื่อ → ดึง id แล้วค่อยเรียก API อีกที
-    if ((current?.name || "").toLowerCase() !== name.toLowerCase()) {
-      // ถ้ามีระบบค้นหา id จากชื่อ อาจเติมได้ที่นี่
-      // ตอนนี้ถ้าไม่มี id จะคงค่าเดิมไว้
-    }
 
     let detail = null;
     if (id) {
@@ -510,7 +467,6 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
               name,
               quantity: qty,
               unit,
-              // per100g ไม่ใช้แล้ว
               calories_per_unit:
                 detail?.calories_per_unit ?? it.calories_per_unit ?? null,
               protein_per_unit:
@@ -585,9 +541,6 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
   };
 
   const handleSaveMeal = async () => {
-    console.log(editName);
-    console.log(foodData.name);
-
     if (!foodData || isSaving) return;
 
     try {
@@ -606,15 +559,14 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
         nutrition: {
           calories: totals.calories,
           protein: totals.protein,
-          carbs: totals.carbohydrates, // ฝั่ง API ใช้ carbs
+          carbs: totals.carbohydrates,
           fat: totals.fat,
         },
         customIngredients: normalizedIngredients,
-        notes: foodData.serving_suggestions || defaultNotes,
+        notes: rawSuggest || defaultNotes,
         consumedAt: foodData.consumedAt,
         consumed_at: foodData.consumedAt,
       };
-      console.log("payloaddddddd", payload);
 
       await createEatingHistory(payload);
       window.dispatchEvent(new Event("history:updated"));
@@ -658,9 +610,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
           preview
             ? "bg-white"
             : `bg-[#F4F4F4] border border-dashed ${
-                isDragging
-                  ? "border-[#C0B275] bg-[#fff8e6]"
-                  : "border-[#5D5D5D]"
+                isDragging ? "border-[#C0B275] bg-[#fff8e6]" : "border-[#5D5D5D]"
               }`
         } rounded-2xl p-6 sm:p-8 md:p-10 min-h-[260px] sm:min-h-[320px]
          flex flex-col items-center justify-center gap-6 sm:gap-8 max-w-5xl mx-auto`}
@@ -670,19 +620,13 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
         onDrop={handleDrop}
       >
         {isAnalyzing ? (
-          <p className="text-[#C0B275] text-lg sm:text-xl">
-            Analyzing your food...
-          </p>
+          <p className="text-[#C0B275] text-lg sm:text-xl">Analyzing your food...</p>
         ) : !isUpload ? (
           <>
             <SlCloudUpload className="text-6xl sm:text-7xl text-[#5D5D5D]" />
             <div className="text-center">
-              <p className="pb-3 sm:pb-5 text-sm sm:text-base lg:text-xl">
-                Drag and drop your file here
-              </p>
-              <p className="text-[#C0B275] text-sm sm:text-base lg:text-xl">
-                or click to select
-              </p>
+              <p className="pb-3 sm:pb-5 text-sm sm:text-base lg:text-xl">Drag and drop your file here</p>
+              <p className="text-[#C0B275] text-sm sm:text-base lg:text-xl">or click to select</p>
             </div>
             <button
               onClick={handleClick}
@@ -690,9 +634,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
             >
               Select File
             </button>
-            <p className="text-[11px] sm:text-[12px] lg:text-[14px] font-Ul text-center">
-              Supports: JPG, PNG, JPEG
-            </p>
+            <p className="text-[11px] sm:text-[12px] lg:text-[14px] font-Ul text-center">Supports: JPG, PNG, JPEG</p>
 
             <input
               type="file"
@@ -733,8 +675,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
                   <div className="flex gap-2 items-center shrink-0">
                     <button
                       onClick={openFoodEdit}
-                      className="inline-flex items-center gap-2 font-prompt cursor-pointer rounded-full border border-zinc-400 px-3 py-1.5
-               hover:bg-black hover:text-white transition"
+                      className="inline-flex items-center gap-2 font-prompt cursor-pointer rounded-full border border-zinc-400 px-3 py-1.5 hover:bg-black hover:text-white transition"
                       title="Edit"
                       aria-label="Edit"
                     >
@@ -745,8 +686,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
                     <button
                       onClick={handleSaveMeal}
                       disabled={isSaving}
-                      className="inline-flex items-center gap-2 cursor-pointer font-prompt rounded-full border border-zinc-400 px-3 py-1.5
-               hover:bg-black hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-2 cursor-pointer font-prompt rounded-full border border-zinc-400 px-3 py-1.5 hover:bg-black hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Save"
                       aria-label="Save"
                     >
@@ -758,7 +698,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
                   </div>
                 </div>
 
-                {/* สรุปโภชนาการ (จาก ingredients ปัจจุบันแบบเรียลไทม์) */}
+                {/* สรุปโภชนาการ */}
                 <div className="space-y-4 text-sm sm:text-base">
                   <div className="flex justify-between items-center border-b border-b-black/80 pb-3">
                     <span className="font-cocoPro">Nutrient ratio</span>
@@ -814,9 +754,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
                       <div className="relative w-28 sm:w-32 bg-[#D8CD9C] rounded-full h-2.5">
                         <div
                           className="absolute right-0 bg-[#C0B275] h-2.5 rounded-full"
-                          style={{
-                            width: `${pct(totals.carbohydrates ?? 0, 300)}%`,
-                          }}
+                          style={{ width: `${pct(totals.carbohydrates ?? 0, 300)}%` }}
                         />
                       </div>
                       <span className="font-inter font-semibold text-[12px] sm:text-[13px]">
@@ -851,14 +789,36 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
                   </div>
                 </div>
 
-                <div className="p-5 sm:p-7 md:p-9 border border-[#746F6F] rounded-xl cursor-pointer">
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-prompt mb-3 sm:mb-4">
-                    Serving Suggestions
-                  </h3>
-                  <p className="text-[15px] sm:text-[16px] md:text-[17px] leading-relaxed font-light text-[#5B5B5B]">
-                    {foodData?.serving_suggestions || defaultNotes}
-                  </p>
+                {/* ===== Serving Suggestions: แสดง 3 บรรทัด + ปุ่มอ่านต่อ ===== */}
+                <div className="p-5 sm:p-7 md:p-9 border border-[#746F6F] rounded-xl">
+                  <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
+                    <h3 className="text-2xl sm:text-3xl md:text-2xl font-prompt">
+                      Serving Suggestions
+                    </h3>
+                    {suggestionLines.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setSuggestModalOpen(true)}
+                        className="text-[10px] text-end cursor-pointer w-30 underline decoration-dotted text-[#5B5B5B]"
+                      >
+                        Read more
+                      </button>
+                    )}
+                  </div>
+
+                  {previewLines.length ? (
+                    <ul className="list-disc space-y-1 text-[15px] sm:text-[16px] md:text-[17px] leading-relaxed font-light text-[#5B5B5B]">
+                      {previewLines.map((line, i) => (
+                        <div key={i}>{line}</div>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-[15px] sm:text-[16px] md:text-[17px] leading-relaxed font-light text-[#5B5B5B]">
+                      {defaultNotes}
+                    </p>
+                  )}
                 </div>
+                {/* ===== /Serving Suggestions ===== */}
               </div>
             </div>
 
@@ -970,10 +930,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
                             autoFocus
                             value={editForm.name}
                             onChange={(e) =>
-                              setEditForm((s) => ({
-                                ...s,
-                                name: e.target.value,
-                              }))
+                              setEditForm((s) => ({ ...s, name: e.target.value }))
                             }
                             onKeyDown={onEditKeyDown}
                             className="min-w-[200px] border border-[#746F6F] rounded-md px-3 py-2 outline-none"
@@ -983,10 +940,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
                             type="number"
                             value={editForm.quantity}
                             onChange={(e) =>
-                              setEditForm((s) => ({
-                                ...s,
-                                quantity: e.target.value,
-                              }))
+                              setEditForm((s) => ({ ...s, quantity: e.target.value }))
                             }
                             onKeyDown={onEditKeyDown}
                             className="w-24 border border-[#746F6F] rounded-md px-3 py-2 outline-none"
@@ -995,10 +949,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
                           <input
                             value={editForm.unit}
                             onChange={(e) =>
-                              setEditForm((s) => ({
-                                ...s,
-                                unit: e.target.value,
-                              }))
+                              setEditForm((s) => ({ ...s, unit: e.target.value }))
                             }
                             onKeyDown={onEditKeyDown}
                             className="w-28 border border-[#746F6F] rounded-full px-3 py-2 outline-none"
@@ -1060,20 +1011,19 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
           </>
         )}
       </div>
+
+      {/* ===== Edit Food Modal ===== */}
       {editOpen && (
         <div
           className="fixed inset-0 z-[180] flex items-center justify-center"
           role="dialog"
           aria-modal="true"
-          ria-labelledby="edit-food-title"
+          aria-labelledby="edit-food-title"
         >
-          {/* ชั้นทับที่ทำให้พื้นหลังมืด + เบลอ */}
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => !saving && setEditOpen(false)} // คลิกนอกป๊อปอัปเพื่อปิด
+            onClick={() => !saving && setEditOpen(false)}
           />
-
-          {/* กล่องป๊อปอัป */}
           <div className="relative z-[181] w-[90%] max-w-sm bg-white rounded-2xl shadow-xl p-5">
             <h3 id="edit-food-title" className="text-lg font-cocoPro mb-3">
               Edit Food
@@ -1090,7 +1040,7 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
               className="mt-1 w-full border rounded-lg px-3 py-2 outline-none"
               placeholder="ข้าวผัด"
               disabled={saving}
-            /> 
+            />
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => setEditOpen(false)}
@@ -1110,6 +1060,46 @@ export const Upload = ({ defaultQuery = "", onResults }) => {
           </div>
         </div>
       )}
+
+      {/* ===== Serving Suggestions Modal ===== */}
+      {suggestModalOpen && (
+        <div
+          className="fixed inset-0 z-[185] flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="suggest-title"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setSuggestModalOpen(false)}
+          />
+          <div className="relative z-[186] w-[92%] max-w-2xl bg-white rounded-2xl shadow-xl p-6 sm:p-8">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <h3 id="suggest-title" className="text-2xl sm:text-3xl font-prompt">
+                Serving Suggestions
+              </h3>
+              <button
+                onClick={() => setSuggestModalOpen(false)}
+                className="px-3 py-1.5 rounded-full border border-gray-300 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-auto pr-1">
+              {suggestionLines.length ? (
+                <ul className="list-disc pl-6 space-y-2 text-[15px] sm:text-[16px] leading-relaxed text-[#5B5B5B]">
+                  {suggestionLines.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[15px] sm:text-[16px] text-[#5B5B5B]">{defaultNotes}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ===== /Serving Suggestions Modal ===== */}
     </div>
   );
 };
