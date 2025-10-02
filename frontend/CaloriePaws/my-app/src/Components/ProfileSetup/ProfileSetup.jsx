@@ -311,34 +311,37 @@ export const ProfileSetup = () => {
             />
           </div>
 
-          {/* Gender */}
-          <div className="flex flex-col gap-3 items-center pt-2">
-            <p className="text-sm">Gender</p>
-            <div className="flex gap-4">
-              <button
-                type="button"
-                className={`rounded-full p-3 transition-colors ${
-                  gender === "male"
-                    ? "bg-blue-300 text-white"
-                    : "bg-gray-300 text-white"
-                }`}
-                onClick={() => setGender("male")}
-              >
-                <FaMale />
-              </button>
-              <button
-                type="button"
-                className={`rounded-full p-3 transition-colors ${
-                  gender === "female"
-                    ? "bg-pink-300 text-white"
-                    : "bg-gray-300 text-white"
-                }`}
-                onClick={() => setGender("female")}
-              >
-                <FaFemale />
-              </button>
+           <div className="flex flex-col gap-3 sm:gap-4 items-center">
+              <p>Gender</p>
+              <div className="flex gap-4 sm:gap-5">
+                <div>
+                  <button
+                    className={`rounded-full p-3 cursor-pointer ${
+                      gender === "male"
+                        ? "bg-[#9FD3F9] text-white"
+                        : "text-white bg-gray-300"
+                    }`}
+                    onClick={() => setGender("male")}
+                  >
+                    <FaMale />
+                  </button>
+                  <p className="text-sm">Male</p>
+                </div>
+                <div>
+                  <button
+                  className={`rounded-full p-3 cursor-pointer ${
+                    gender === "female"
+                      ? "bg-[#F99FF7] text-white"
+                      : "bg-gray-300 text-white"
+                  }`}
+                  onClick={() => setGender("female")}
+                >
+                  <FaFemale />
+                </button>
+                <p className="text-sm">Female</p>
+                </div>
+              </div>
             </div>
-          </div>
 
           {/* Next */}
           <div className="pt-2">

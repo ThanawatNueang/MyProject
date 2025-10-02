@@ -421,18 +421,24 @@ export const Edit = () => {
           <div className="sm:col-span-2 text-center">
             <span className="block mb-2 text-sm font-bold">Gender</span>
             <div className="flex justify-center gap-3">
-              <button
+              <div className="">
+                <button
+                  type="button"
+                  className={`rounded-full px-4 py-4 flex items-center gap-2 cursor-pointer ${
+                    gender === "male"
+                      ? "bg-[#9FD3F9] text-white"
+                      : "bg-gray-200"
+                  }`}
+                  onClick={() => setGender("male")}
+                >
+                  <FaMale />
+                </button>
+                <p className="text-sm">Male</p>
+              </div>
+              <div>
+                <button
                 type="button"
-                className={`rounded-full px-4 py-4 flex items-center gap-2 ${
-                  gender === "male" ? "bg-[#9FD3F9] text-white" : "bg-gray-200"
-                }`}
-                onClick={() => setGender("male")}
-              >
-                <FaMale />
-              </button>
-              <button
-                type="button"
-                className={`rounded-full px-4 py-4 flex items-center gap-2 ${
+                className={`rounded-full px-4 py-4 flex items-center gap-2 cursor-pointer ${
                   gender === "female"
                     ? "bg-[#F99FF7] text-white"
                     : "bg-gray-200"
@@ -441,6 +447,8 @@ export const Edit = () => {
               >
                 <FaFemale />
               </button>
+               <p className="text-sm">Female</p>
+              </div>
             </div>
           </div>
 
